@@ -1,0 +1,307 @@
+[
+  {
+    "pass": 1,
+    "detector": 102,
+    "mjd": 55352.7904837825,
+    "obs_time": "2010-06-01T13:22:03.478",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E000",
+      "WISE_W2_E001"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 102,
+    "mjd": 55540.202900095,
+    "obs_time": "2010-12-10T04:52:10.568",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E002"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 102,
+    "mjd": 56645.707224555,
+    "obs_time": "2013-12-19T16:58:24.202",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E004"
+    ]
+  },
+  {
+    "pass": 4,
+    "detector": 102,
+    "mjd": 56816.114508164996,
+    "obs_time": "2014-06-03T05:53:36.576",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E005",
+      "WISE_W2_E006"
+    ]
+  },
+  {
+    "pass": 5,
+    "detector": 102,
+    "mjd": 57006.054917375,
+    "obs_time": "2014-12-10T09:19:49.320",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E007",
+      "WISE_W2_E008"
+    ]
+  },
+  {
+    "pass": 6,
+    "detector": 102,
+    "mjd": 57175.0518540225,
+    "obs_time": "2015-05-28T03:55:05.961",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E009",
+      "WISE_W2_E010"
+    ]
+  },
+  {
+    "pass": 7,
+    "detector": 102,
+    "mjd": 57367.9049820075,
+    "obs_time": "2015-12-07T06:46:25.878",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E011",
+      "WISE_W2_E012"
+    ]
+  },
+  {
+    "pass": 8,
+    "detector": 102,
+    "mjd": 57535.2371007075,
+    "obs_time": "2016-05-23T03:24:43.550",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E013",
+      "WISE_W2_E014"
+    ]
+  },
+  {
+    "pass": 9,
+    "detector": 102,
+    "mjd": 57730.165430534995,
+    "obs_time": "2016-12-08T03:58:13.198",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E016"
+    ]
+  },
+  {
+    "pass": 10,
+    "detector": 102,
+    "mjd": 57892.83258097,
+    "obs_time": "2017-05-19T19:58:54.996",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E018"
+    ]
+  },
+  {
+    "pass": 11,
+    "detector": 102,
+    "mjd": 58099.188326402495,
+    "obs_time": "2017-12-07T12:58:48.385",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E020",
+      "WISE_W2_E021"
+    ]
+  },
+  {
+    "pass": 12,
+    "detector": 102,
+    "mjd": 58258.031149535,
+    "obs_time": "2018-05-15T04:32:00.952",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E022",
+      "WISE_W2_E023"
+    ]
+  },
+  {
+    "pass": 13,
+    "detector": 102,
+    "mjd": 58464.617489527496,
+    "obs_time": "2018-12-08T16:36:01.933",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E024",
+      "WISE_W2_E025"
+    ]
+  },
+  {
+    "pass": 14,
+    "detector": 102,
+    "mjd": 58622.1898482475,
+    "obs_time": "2019-05-14T09:09:49.700",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E026",
+      "WISE_W2_E027"
+    ]
+  },
+  {
+    "pass": 15,
+    "detector": 102,
+    "mjd": 58830.406874287495,
+    "obs_time": "2019-12-08T19:05:21.942",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E028",
+      "WISE_W2_E029"
+    ]
+  },
+  {
+    "pass": 16,
+    "detector": 102,
+    "mjd": 58984.592048735,
+    "obs_time": "2020-05-15T14:12:33.011",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E030"
+    ]
+  },
+  {
+    "pass": 17,
+    "detector": 102,
+    "mjd": 59194.70124229,
+    "obs_time": "2020-12-07T02:58:43.003",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E032",
+      "WISE_W2_E033"
+    ]
+  },
+  {
+    "pass": 18,
+    "detector": 102,
+    "mjd": 59353.262541715,
+    "obs_time": "2021-05-14T09:26:18.315",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E034",
+      "WISE_W2_E035"
+    ]
+  },
+  {
+    "pass": 19,
+    "detector": 102,
+    "mjd": 59557.851594830005,
+    "obs_time": "2021-12-09T20:26:17.793",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E036"
+    ]
+  },
+  {
+    "pass": 20,
+    "detector": 102,
+    "mjd": 59717.555417120006,
+    "obs_time": "2022-05-13T16:38:51.974",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E038",
+      "WISE_W2_E039"
+    ]
+  },
+  {
+    "pass": 21,
+    "detector": 102,
+    "mjd": 59925.802426279995,
+    "obs_time": "2022-12-08T04:14:58.305",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E040",
+      "WISE_W2_E041"
+    ]
+  },
+  {
+    "pass": 22,
+    "detector": 102,
+    "mjd": 60079.827695815,
+    "obs_time": "2023-05-15T19:51:52.918",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E042"
+    ]
+  },
+  {
+    "pass": 23,
+    "detector": 102,
+    "mjd": 60290.0903123675,
+    "obs_time": "2023-12-07T10:34:30.023",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E044",
+      "WISE_W2_E045"
+    ]
+  },
+  {
+    "pass": 24,
+    "detector": 102,
+    "mjd": 60448.725936237504,
+    "obs_time": "2024-05-13T21:18:39.220",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 2,
+    "member_ids": [
+      "WISE_W2_E046",
+      "WISE_W2_E047"
+    ]
+  }
+]

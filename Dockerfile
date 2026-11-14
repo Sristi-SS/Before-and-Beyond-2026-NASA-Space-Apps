@@ -20,7 +20,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend/
 COPY --from=web /web/dist ./frontend/dist
-# The pre-built cache is mounted or copied at /app/data/cache (see docs/DEPLOY.md).
-RUN mkdir -p /app/data/cache
+# Saved demo cubes (real archive images).  A mounted disk at /app/data/cache replaces them.
+COPY demo_cache/ ./data/cache/
 EXPOSE 8000
 CMD ["python", "-m", "backend.app"]

@@ -1,0 +1,40 @@
+[
+  {
+    "pass": 1,
+    "detector": 3,
+    "mjd": 60902.866125,
+    "obs_time": "2025-08-15T20:45:11.338",
+    "wavelength_um": 2.3343499999999997,
+    "bandwidth_um": 0.0579,
+    "n_frames": 2,
+    "member_ids": [
+      "2025W33_2C_0321_1_D3",
+      "2025W33_2C_0321_2_D3"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 3,
+    "mjd": 61152.082265000005,
+    "obs_time": "2026-04-10T00:43:17.258",
+    "wavelength_um": 1.9496,
+    "bandwidth_um": 0.04845,
+    "n_frames": 2,
+    "member_ids": [
+      "2026W15_2A_0137_1_D3",
+      "2026W19_1A_0046_1_D3"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 3,
+    "mjd": 61268.63148,
+    "obs_time": "2026-08-16T15:08:22.122",
+    "wavelength_um": 1.6504,
+    "bandwidth_um": 0.0395,
+    "n_frames": 1,
+    "member_ids": [
+      "2026W33_2A_0594_4_D3"
+    ]
+  }
+]

@@ -1,0 +1,18 @@
+# AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
+# Render blueprint, free plan.  UNTESTED: nobody has deployed this yet.  See docs/DEPLOY.md.
+services:
+  - type: web
+    name: spherex-time-cube
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: SPHEREX_TRUST_PROXY
+        value: "1"
+      - key: SPHEREX_CONCURRENCY
+        value: "2"
+      # A random secret made by Render.  Hardware devices must send it; it is never in the repo.
+      - key: SPHEREX_HW_TOKEN
+        generateValue: true

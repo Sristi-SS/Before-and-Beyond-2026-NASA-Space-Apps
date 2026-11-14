@@ -49,6 +49,24 @@ cache into the image (copy `data/cache/jobs`, `gaia`, `wise` in before `docker b
 tiers often have ephemeral disks and sleep when idle, so the first request can be slow). Create
 the account and deploy yourself; this repo does neither.
 
+## (c2) Render, free plan (untested)
+
+The repo has a `render.yaml` blueprint and a `demo_cache/` folder with the saved test cubes.
+
+1. Sign in at https://render.com with GitHub.
+2. Click **New**, then **Blueprint**. Pick this repository. Click **Apply**.
+3. Wait for the build (about 5 to 10 minutes). Open the `onrender.com` address.
+
+What the free plan means:
+
+- **No disk.** The saved cubes come from `demo_cache/` inside the image. A cube that a visitor
+  builds is lost when the service restarts or sleeps.
+- **Sleep.** The service sleeps after about 15 minutes with no visitors. The next visit waits
+  about one minute. Open the site a few minutes before a demo.
+- **Small memory (512 MB).** A new cube build or a wide motion map may fail. The saved cubes
+  are the safe path for a demo.
+- `SPHEREX_HW_TOKEN` is made by Render. Read it in the Render dashboard if a device must connect.
+
 ## (d) Jetson Orin Nano
 
 ```

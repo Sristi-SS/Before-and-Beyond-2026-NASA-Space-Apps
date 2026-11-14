@@ -1,0 +1,14 @@
+[
+  {
+    "pass": 1,
+    "detector": 6,
+    "mjd": 60815.13187,
+    "obs_time": "2025-05-20T03:08:55.879",
+    "wavelength_um": 4.5278,
+    "bandwidth_um": 0.0356,
+    "n_frames": 1,
+    "member_ids": [
+      "2025W21_1B_0227_1_D6"
+    ]
+  }
+]

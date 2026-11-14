@@ -1,0 +1,41 @@
+[
+  {
+    "pass": 1,
+    "detector": 5,
+    "mjd": 60801.108005,
+    "obs_time": "2025-05-06T02:33:29.930",
+    "wavelength_um": 4.31345,
+    "bandwidth_um": 0.0377,
+    "n_frames": 2,
+    "member_ids": [
+      "2025W19_1B_0181_1_D5",
+      "2025W19_1B_0181_2_D5"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 5,
+    "mjd": 61020.940235,
+    "obs_time": "2025-12-11T19:17:18.753",
+    "wavelength_um": 4.06455,
+    "bandwidth_um": 0.036750000000000005,
+    "n_frames": 2,
+    "member_ids": [
+      "2025W50_2A_0086_1_D5",
+      "2025W50_2A_0164_1_D5"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 5,
+    "mjd": 61171.871914999996,
+    "obs_time": "2026-05-11T13:36:45.411",
+    "wavelength_um": 4.2402,
+    "bandwidth_um": 0.0369,
+    "n_frames": 2,
+    "member_ids": [
+      "2026W20_1A_0214_1_D5",
+      "2026W20_1A_0455_1_D5"
+    ]
+  }
+]

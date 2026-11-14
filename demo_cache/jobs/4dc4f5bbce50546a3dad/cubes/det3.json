@@ -1,0 +1,28 @@
+[
+  {
+    "pass": 1,
+    "detector": 3,
+    "mjd": 60800.920625,
+    "obs_time": "2025-04-24T21:06:38.391",
+    "wavelength_um": 1.71725,
+    "bandwidth_um": 0.0416,
+    "n_frames": 2,
+    "member_ids": [
+      "2025W17_4B_0021_1_D3",
+      "2025W20_2D_0243_4_D3"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 3,
+    "mjd": 61096.32549,
+    "obs_time": "2026-02-10T17:25:08.276",
+    "wavelength_um": 2.04765,
+    "bandwidth_um": 0.04915,
+    "n_frames": 2,
+    "member_ids": [
+      "2026W07_1A_0399_1_D3",
+      "2026W11_1A_0623_3_D3"
+    ]
+  }
+]

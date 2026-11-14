@@ -1,0 +1,39 @@
+[
+  {
+    "pass": 1,
+    "detector": 4,
+    "mjd": 60920.97952,
+    "obs_time": "2025-09-02T23:29:33.265",
+    "wavelength_um": 2.6241,
+    "bandwidth_um": 0.0756,
+    "n_frames": 1,
+    "member_ids": [
+      "2025W36_1A_0446_2_D4"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 4,
+    "mjd": 61111.00275,
+    "obs_time": "2026-03-12T00:03:00.315",
+    "wavelength_um": 2.8169,
+    "bandwidth_um": 0.0798,
+    "n_frames": 1,
+    "member_ids": [
+      "2026W11_1A_0645_1_D4"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 4,
+    "mjd": 61288.188325,
+    "obs_time": "2026-09-02T02:19:55.430",
+    "wavelength_um": 2.94995,
+    "bandwidth_um": 0.08510000000000001,
+    "n_frames": 2,
+    "member_ids": [
+      "2026W36_1A_0476_1_D4",
+      "2026W37_1A_0234_4_D4"
+    ]
+  }
+]

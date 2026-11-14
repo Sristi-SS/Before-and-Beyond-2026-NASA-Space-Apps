@@ -1,0 +1,43 @@
+[
+  {
+    "pass": 1,
+    "detector": 6,
+    "mjd": 60800.8351,
+    "obs_time": "2025-05-05T20:01:35.430",
+    "wavelength_um": 4.8598,
+    "bandwidth_um": 0.0379,
+    "n_frames": 1,
+    "member_ids": [
+      "2025W19_1B_0138_1_D6"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 6,
+    "mjd": 61000.4513225,
+    "obs_time": "2025-11-14T12:07:21.395",
+    "wavelength_um": 4.719,
+    "bandwidth_um": 0.0366,
+    "n_frames": 4,
+    "member_ids": [
+      "2025W46_2A_0214_1_D6",
+      "2025W46_2A_0214_2_D6",
+      "2025W46_2A_0214_3_D6",
+      "2025W50_2A_0232_1_D6"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 6,
+    "mjd": 61152.23967,
+    "obs_time": "2026-04-21T04:49:19.291",
+    "wavelength_um": 4.5186,
+    "bandwidth_um": 0.0357,
+    "n_frames": 3,
+    "member_ids": [
+      "2026W17_1B_0227_4_D6",
+      "2026W17_1B_0507_1_D6",
+      "2026W17_1B_0507_2_D6"
+    ]
+  }
+]

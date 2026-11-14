@@ -1,0 +1,278 @@
+[
+  {
+    "pass": 1,
+    "detector": 102,
+    "mjd": 55259.397600535,
+    "obs_time": "2010-03-04T09:32:32.686",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E000"
+    ]
+  },
+  {
+    "pass": 2,
+    "detector": 102,
+    "mjd": 55450.67051439,
+    "obs_time": "2010-09-11T16:05:32.443",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E001"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 102,
+    "mjd": 56722.865335775,
+    "obs_time": "2014-03-06T20:46:05.011",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E002"
+    ]
+  },
+  {
+    "pass": 4,
+    "detector": 102,
+    "mjd": 56914.117675155,
+    "obs_time": "2014-09-14T02:49:27.133",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E003"
+    ]
+  },
+  {
+    "pass": 5,
+    "detector": 102,
+    "mjd": 57083.39754235,
+    "obs_time": "2015-03-02T09:32:27.659",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E004"
+    ]
+  },
+  {
+    "pass": 6,
+    "detector": 102,
+    "mjd": 57277.47698113001,
+    "obs_time": "2015-09-12T11:26:51.170",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E005"
+    ]
+  },
+  {
+    "pass": 7,
+    "detector": 102,
+    "mjd": 57442.495528285,
+    "obs_time": "2016-02-24T11:53:33.644",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E006"
+    ]
+  },
+  {
+    "pass": 8,
+    "detector": 102,
+    "mjd": 57641.713730345,
+    "obs_time": "2016-09-10T17:07:46.302",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E007"
+    ]
+  },
+  {
+    "pass": 9,
+    "detector": 102,
+    "mjd": 57806.74535585,
+    "obs_time": "2017-02-22T17:53:18.745",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E008"
+    ]
+  },
+  {
+    "pass": 10,
+    "detector": 102,
+    "mjd": 58007.322709285,
+    "obs_time": "2017-09-11T07:44:42.082",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E009"
+    ]
+  },
+  {
+    "pass": 11,
+    "detector": 102,
+    "mjd": 58163.80988379,
+    "obs_time": "2018-02-14T19:26:13.959",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E010"
+    ]
+  },
+  {
+    "pass": 12,
+    "detector": 102,
+    "mjd": 58372.92178673,
+    "obs_time": "2018-09-11T22:07:22.373",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E011"
+    ]
+  },
+  {
+    "pass": 13,
+    "detector": 102,
+    "mjd": 58529.41014635,
+    "obs_time": "2019-02-15T09:50:36.645",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E012"
+    ]
+  },
+  {
+    "pass": 14,
+    "detector": 102,
+    "mjd": 58737.073171645,
+    "obs_time": "2019-09-11T01:45:22.030",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E013"
+    ]
+  },
+  {
+    "pass": 15,
+    "detector": 102,
+    "mjd": 58895.014627765,
+    "obs_time": "2020-02-16T00:21:03.839",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E014"
+    ]
+  },
+  {
+    "pass": 16,
+    "detector": 102,
+    "mjd": 59102.806174275,
+    "obs_time": "2020-09-10T19:20:53.457",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E015"
+    ]
+  },
+  {
+    "pass": 17,
+    "detector": 102,
+    "mjd": 59259.249624525,
+    "obs_time": "2021-02-14T05:59:27.559",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E016"
+    ]
+  },
+  {
+    "pass": 18,
+    "detector": 102,
+    "mjd": 59468.372019999995,
+    "obs_time": "2021-09-11T08:55:42.528",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E017"
+    ]
+  },
+  {
+    "pass": 19,
+    "detector": 102,
+    "mjd": 59626.39730037,
+    "obs_time": "2022-02-16T09:32:06.752",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E018"
+    ]
+  },
+  {
+    "pass": 20,
+    "detector": 102,
+    "mjd": 59832.57678461,
+    "obs_time": "2022-09-10T13:50:34.190",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E019"
+    ]
+  },
+  {
+    "pass": 21,
+    "detector": 102,
+    "mjd": 59990.541716845,
+    "obs_time": "2023-02-15T13:00:04.335",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E020"
+    ]
+  },
+  {
+    "pass": 22,
+    "detector": 102,
+    "mjd": 60199.718745980004,
+    "obs_time": "2023-09-12T17:14:59.653",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E021"
+    ]
+  },
+  {
+    "pass": 23,
+    "detector": 102,
+    "mjd": 60354.6793815,
+    "obs_time": "2024-02-14T16:18:18.562",
+    "wavelength_um": 4.6,
+    "bandwidth_um": 1.04,
+    "n_frames": 1,
+    "member_ids": [
+      "WISE_W2_E022"
+    ]
+  }
+]

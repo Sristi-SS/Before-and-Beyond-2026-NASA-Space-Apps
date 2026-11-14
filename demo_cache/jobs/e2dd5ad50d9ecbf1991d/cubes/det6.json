@@ -1,0 +1,26 @@
+[
+  {
+    "pass": 2,
+    "detector": 6,
+    "mjd": 60993.50577,
+    "obs_time": "2025-11-14T12:07:21.395",
+    "wavelength_um": 4.7019,
+    "bandwidth_um": 0.0368,
+    "n_frames": 1,
+    "member_ids": [
+      "2025W46_2A_0214_1_D6"
+    ]
+  },
+  {
+    "pass": 3,
+    "detector": 6,
+    "mjd": 61151.20158,
+    "obs_time": "2026-04-21T04:49:19.291",
+    "wavelength_um": 4.4863,
+    "bandwidth_um": 0.0357,
+    "n_frames": 1,
+    "member_ids": [
+      "2026W17_1B_0227_4_D6"
+    ]
+  }
+]
