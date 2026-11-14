@@ -1,0 +1,12 @@
+# AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
+.git
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+node_modules
+frontend/node_modules
+frontend/dist
+data/cache/raw
+hardware/esp32_bridge/secrets.h
+*.log

@@ -1,0 +1,568 @@
+<!doctype html>
+<!-- AI-assistance: this file was written with AI assistance; see README.md "AI assistance". -->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPHEREx Time Cube</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2305060c'/><rect x='3' y='3' width='7' height='7' fill='none' stroke='%2358b4ff' stroke-width='1.2'/><rect x='6' y='6' width='7' height='7' fill='none' stroke='%23dcd6ff' stroke-width='1.2'/></svg>" />
+    <meta
+      name="description"
+      content="Explore real SPHEREx images of a patch of sky as a three-dimensional time cube, then align a moving candidate with a shift-and-stack."
+    />
+  </head>
+  <body>
+    <div id="sim-banner" class="sim-banner" role="status">SIMULATED OBJECT &mdash; not real data. Simulator test mode is on: every view shows frames with a made-up object added.</div>
+
+    <!-- Floating bar: brand, the three scenes, a few global switches. -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <div>
+          <h1>SPHEREx Time Cube</h1>
+          <p>Real archive images &middot; motion candidates</p>
+        </div>
+      </div>
+      <nav class="scene-nav" aria-label="Scenes">
+        <button id="nav-globe" type="button" class="ghost">Sky</button>
+        <button id="nav-cube" type="button" class="ghost">Time cube</button>
+        <button id="nav-orbit" type="button" class="ghost">Why it moves</button>
+      </nav>
+      <div class="topbar-meta">
+        <span id="status-badge" class="badge" role="status" data-kind="online">checking&hellip;</span>
+        <span id="hw-indicator" class="badge" role="status" hidden></span>
+        <button id="tour-start" type="button" class="ghost">Tour</button>
+        <button id="share-link" type="button" class="ghost">Share</button>
+        <button id="help-toggle" type="button" class="ghost round" aria-pressed="true" aria-label="Show or hide the question-mark tips">?</button>
+        <button id="focus-toggle" type="button" class="ghost" aria-pressed="false">Focus</button>
+        <button id="fullscreen-demo" type="button" class="ghost">Projector</button>
+      </div>
+    </header>
+
+    <!-- ============================ Scene 2: the time cube ============================ -->
+    <main class="layout">
+      <section class="stage">
+        <div id="viewport" class="viewport" aria-label="Three-dimensional time cube"></div>
+        <canvas id="blink-canvas" class="blink-canvas" width="128" height="128" hidden
+          role="img" aria-label="Flickering view of the same sky patch over time"></canvas>
+        <canvas id="colour-canvas" class="blink-canvas colour-canvas" width="128" height="128" hidden
+          role="img" aria-label="Colour composite: early epochs in blue, late epochs in orange"></canvas>
+        <p id="colour-note" class="colour-note" hidden>
+          <span class="swatch blue"></span> earlier epochs
+          <span class="swatch orange"></span> later epochs. Fixed sources look white;
+          a moving or varying source leaves a blue-to-orange trail.
+          Colours are a visualisation of infrared data, not what an eye would see.
+        </p>
+        <div id="map-wrap" class="map-wrap" hidden>
+          <canvas id="map-canvas" class="map-canvas" tabindex="0"
+            role="application"
+            aria-label="Motion map over the velocity plane. Arrow keys move the selected velocity, Enter runs the tilt there, B jumps to the best velocity."></canvas>
+          <div id="map-info" class="map-info" role="status" aria-live="polite">
+            <b id="map-headline"></b>
+            <span id="map-detail"></span>
+            <span class="caution">Candidate only, not a detection: confirm in several bands and against catalogues.</span>
+            <button id="save-map-img" type="button" class="ghost" aria-label="Save motion map as PNG with caption">Save image</button>
+          </div>
+        </div>
+        <div id="compare-wrap" hidden></div>
+        <div id="view-stub" class="view-stub" hidden>
+          <h2 id="view-stub-title">Coming soon</h2>
+          <p id="view-stub-body"></p>
+        </div>
+        <div class="sim-mark" aria-hidden="true"><span>SIMULATED OBJECT &mdash; not real data</span></div>
+        <div id="empty-state" class="empty-state">
+          <p class="eyebrow">Scene two &middot; the time cube</p>
+          <h2>Stack time.<br /><em>Watch what moves.</em></h2>
+          <p>
+            Pick a target on the left, or enter your own coordinates.
+            The tool fetches real SPHEREx cut-outs from the IRSA archive and
+            lines them up on one north-up grid.
+          </p>
+          <div class="row wrap center">
+            <button type="button" class="primary" data-auto-demo>Watch the 1-minute demo</button>
+            <button id="quick-start">Load Barnard's Star (cached)</button>
+            <button id="tour-start-empty" type="button" class="ghost">Step-by-step tour</button>
+          </div>
+        </div>
+
+        <!-- View switch: buttons that drive the hidden select below. -->
+        <div class="view-seg" role="group" aria-label="View">
+          <button type="button" data-view="cube">Cube</button>
+          <button type="button" data-view="blink">Blink</button>
+          <button type="button" data-view="colour">Colour</button>
+          <button type="button" data-view="map">Motion map</button>
+          <button type="button" data-view="compare">Compare</button>
+        </div>
+        <select id="view" class="sr-only" aria-label="View" tabindex="-1">
+          <option value="cube">Cube</option>
+          <option value="blink">Blink</option>
+          <option value="colour">Colour (early vs late)</option>
+          <option value="map">Motion map</option>
+          <option value="compare">Compare epochs</option>
+        </select>
+
+        <p class="stage-legend" aria-hidden="true">
+          <span><i class="swatch frame"></i>image on the timeline</span>
+          <span><i class="swatch ramp"></i>light of the other images, first to last</span>
+          <span>drag to turn &middot; scroll to zoom</span>
+        </p>
+
+        <!-- Bottom deck: the timeline. -->
+        <div class="deck" aria-label="Timeline">
+          <button id="play" class="icon" aria-label="Play or pause">Play</button>
+          <div class="deck-main">
+            <div class="deck-line">
+              <p id="slice-label" class="slice-label">&mdash;</p>
+              <span id="cube-count" class="cube-count"></span>
+            </div>
+            <input id="timeline" type="range" min="0" max="0" step="1" value="0" aria-label="Time slice" />
+          </div>
+          <label class="field deck-speed">
+            <span>Speed</span>
+            <input id="speed" type="range" min="1" max="12" step="1" value="4" />
+          </label>
+          <button id="sound-toggle" type="button" class="ghost" aria-pressed="false">Sound</button>
+          <button id="save-movie" type="button" class="ghost" aria-label="Save movie of the current frames as WebM">Save movie</button>
+        </div>
+      </section>
+
+      <!-- Left dock: what to look at. -->
+      <aside id="dock-controls" class="dock dock-left panel controls" aria-label="Cube controls">
+        <div class="dock-head">
+          <div class="dock-tabs" role="tablist" aria-label="Controls">
+            <button type="button" role="tab" data-tab="target">Target</button>
+            <button type="button" role="tab" data-tab="frames">Frames</button>
+            <button type="button" role="tab" data-tab="learn">Learn</button>
+          </div>
+          <button type="button" class="dock-close" aria-label="Hide this panel">&lsaquo;</button>
+        </div>
+
+        <section data-pane="target">
+          <h2>Choose a sky position</h2>
+          <label class="field">
+            <span>Named target</span>
+            <select id="target-select">
+              <option value="">Custom coordinates</option>
+            </select>
+          </label>
+          <div class="row" id="custom-coords">
+            <label class="field">
+              <span>RA (deg)</span>
+              <input id="ra" type="number" step="0.0001" min="0" max="360" placeholder="269.45" />
+            </label>
+            <label class="field">
+              <span>Dec (deg)</span>
+              <input id="dec" type="number" step="0.0001" min="-90" max="90" placeholder="4.69" />
+            </label>
+          </div>
+          <div class="row">
+            <label class="field">
+              <span>Field of view (deg)</span>
+              <select id="fov">
+                <option value="0.1">0.10</option>
+                <option value="0.2" selected>0.20</option>
+                <option value="0.3">0.30</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Max frames</span>
+              <select id="max-frames">
+                <option value="20">20</option>
+                <option value="40" selected>40</option>
+                <option value="60">60</option>
+              </select>
+            </label>
+          </div>
+          <button id="build" class="primary">Build time cube</button>
+          <p id="build-status" class="hint" role="status"></p>
+        </section>
+
+        <section data-pane="frames" hidden>
+          <h2>Browse the frames</h2>
+          <div class="field">
+            <span>Wavelength group</span>
+            <div id="group-picker" class="chips" role="group" aria-label="Detector group"></div>
+            <p id="group-note" class="hint small" role="status"></p>
+          </div>
+          <label class="field">
+            <span>Stacking order</span>
+            <select id="axis">
+              <option value="time">Time</option>
+              <option value="wave">Wavelength</option>
+            </select>
+          </label>
+          <label class="check">
+            <input id="gaia-toggle" type="checkbox" />
+            <span>Gaia star rings</span>
+          </label>
+          <p id="gaia-note" class="hint small" role="status"></p>
+        </section>
+
+        <section data-pane="learn" hidden>
+          <h2>New here?</h2>
+          <div class="row wrap">
+            <button id="learn-tour" type="button" class="primary">Take the guided tour</button>
+            <button id="learn-orbit" type="button" class="ghost">Why does it move?</button>
+          </div>
+          <button type="button" data-auto-demo>Watch the 1-minute demo</button>
+          <h2>Keyboard</h2>
+          <dl class="provenance keys">
+            <dt>Space</dt><dd>play or pause</dd>
+            <dt>&larr; &rarr;</dt><dd>one image back or forward</dd>
+            <dt>1 to 5</dt><dd>Cube, Blink, Colour, Map, Compare</dd>
+            <dt>F</dt><dd>hide or show the panels</dd>
+          </dl>
+          <details id="glossary" open></details>
+        </section>
+      </aside>
+
+      <!-- Right dock: what to do with it. -->
+      <aside id="dock-tilt" class="dock dock-right panel tilt" aria-label="Analysis">
+        <div class="dock-head">
+          <div class="dock-tabs" role="tablist" aria-label="Analysis">
+            <button type="button" role="tab" data-tab="tilt">Tilt</button>
+            <button type="button" role="tab" data-tab="candidates">Candidates</button>
+            <button type="button" role="tab" data-tab="sim">Simulator</button>
+            <button type="button" role="tab" data-tab="data">Data<i id="data-dot" class="tab-dot" hidden></i></button>
+          </div>
+          <button type="button" class="dock-close" aria-label="Hide this panel">&rsaquo;</button>
+        </div>
+
+        <section data-pane="tilt">
+          <h2>Tilt (shift &amp; stack)</h2>
+          <div class="row">
+            <label class="field">
+              <span>v<sub>x</sub> east (arcsec/yr)</span>
+              <input id="vx" type="number" step="0.5" min="-60" max="60" value="0" />
+            </label>
+            <label class="field">
+              <span>v<sub>y</sub> north (arcsec/yr)</span>
+              <input id="vy" type="number" step="0.5" min="-60" max="60" value="0" />
+            </label>
+          </div>
+          <div class="row">
+            <button id="run-tilt" class="primary grow">Run tilt</button>
+            <button id="reset-tilt" class="ghost">Zero</button>
+          </div>
+          <div class="row">
+            <button id="use-catalogue" class="grow" disabled>Catalogue motion</button>
+            <button id="find-motion" class="grow" disabled>Find best motion</button>
+          </div>
+          <p id="tilt-status" class="hint" role="status"></p>
+
+          <div class="result-grid">
+            <figure>
+              <canvas id="tilt-canvas" width="128" height="128"></canvas>
+              <div class="sim-mark" aria-hidden="true"><span>SIMULATED OBJECT &mdash; not real data</span></div>
+              <figcaption id="tilt-caption">Shifted stack</figcaption>
+            </figure>
+            <figure class="compare">
+              <canvas id="zero-canvas" width="128" height="128"></canvas>
+              <div class="sim-mark" aria-hidden="true"><span>SIMULATED OBJECT &mdash; not real data</span></div>
+              <figcaption>Same frames, no motion</figcaption>
+            </figure>
+          </div>
+          <div class="metrics" id="tilt-metrics"></div>
+
+          <div id="checklist" class="checklist-wrap" hidden aria-live="polite"></div>
+
+          <details class="fold">
+            <summary>Options</summary>
+            <label class="check">
+              <input id="static-median" type="checkbox" checked />
+              <span>Remove fixed stars</span>
+            </label>
+            <div class="row">
+              <label class="field">
+                <span>Map span &plusmn; (arcsec/yr)</span>
+                <select id="map-span">
+                  <option value="6">6</option>
+                  <option value="12" selected>12</option>
+                  <option value="24">24</option>
+                  <option value="60">60</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Map step (arcsec/yr)</span>
+                <select id="map-step">
+                  <option value="0.5">0.5</option>
+                  <option value="1" selected>1</option>
+                  <option value="2">2</option>
+                  <option value="5">5</option>
+                </select>
+              </label>
+            </div>
+          </details>
+          <details class="fold">
+            <summary>Save and share</summary>
+            <div class="row export-row">
+              <button id="save-tilt-img" type="button" class="ghost grow" aria-label="Save tilt result as PNG with caption">Save image</button>
+              <button id="tilt-snap" type="button" class="ghost grow" aria-label="Save tilt snap clip as WebM, velocity from zero to current">Snap clip</button>
+            </div>
+            <button id="open-dossier" type="button" class="ghost" aria-label="Open the printable candidate dossier">Candidate dossier</button>
+            <p id="export-status" class="hint small" role="status"></p>
+            <p id="dossier-status" class="hint small" role="status"></p>
+          </details>
+          <button id="open-orbit" type="button" class="linkish">Why does a nearby object move?</button>
+          <p class="hint small">
+            Any object found this way is a <strong>candidate</strong>, never a confirmed discovery.
+          </p>
+        </section>
+
+        <section data-pane="candidates" hidden>
+          <h2>Candidate search</h2>
+          <p class="hint">
+            The search tries many motions, ranks the best ones, and predicts where
+            each one would be in every other image.
+          </p>
+          <button id="cand-run" type="button" class="primary" disabled>Search this band</button>
+          <p id="cand-status" class="hint" role="status" aria-live="polite"></p>
+          <ol id="cand-list" class="cand-list"></ol>
+          <div id="cand-detail" class="cand-detail" hidden></div>
+          <p id="cand-model" class="hint small"></p>
+        </section>
+
+        <section id="sim-panel" data-pane="sim" aria-label="Planet X simulator, test mode" hidden></section>
+
+        <section data-pane="data" hidden>
+          <h2>New images</h2>
+          <p class="hint">
+            The archive adds SPHEREx images all the time. This checks for images
+            newer than this cube.
+          </p>
+          <dl id="upd-facts" class="provenance">
+            <dt>Newest in this cube</dt><dd id="upd-cube">&mdash;</dd>
+            <dt>Newest in the archive</dt><dd id="upd-archive">&mdash;</dd>
+            <dt>Newer images</dt><dd id="upd-new">&mdash;</dd>
+          </dl>
+          <div class="row">
+            <button id="upd-check" type="button" class="grow" disabled>Check now</button>
+            <button id="upd-apply" type="button" class="primary grow" disabled>Update cube</button>
+          </div>
+          <p id="upd-status" class="hint small" role="status" aria-live="polite"></p>
+
+          <h2>Provenance</h2>
+          <dl id="provenance" class="provenance">
+            <dt>Archives</dt>
+            <dd id="prov-archives">IRSA SPHEREx</dd>
+            <dt>Units</dt>
+            <dd id="prov-units">&mdash;</dd>
+            <dt>WISE stage</dt>
+            <dd id="prov-wise">&mdash;</dd>
+            <dt>This frame</dt>
+            <dd id="prov-current">&mdash;</dd>
+            <dt>Release</dt>
+            <dd id="prov-release">&mdash;</dd>
+            <dt>Frames</dt>
+            <dd id="prov-frames">&mdash;</dd>
+            <dt>Masked pixels</dt>
+            <dd id="prov-masked">&mdash;</dd>
+            <dt>Wavelengths</dt>
+            <dd id="prov-waves">&mdash;</dd>
+          </dl>
+          <p class="hint small">
+            SPHEREx frames are in MJy/sr; WISE frames are in unWISE nanomaggies.
+            The two are never added together.
+          </p>
+          <div class="row wrap">
+            <a id="contact-link" class="link" target="_blank" rel="noreferrer" hidden>Contact sheet (all frames)</a>
+            <a class="link" href="/api/health" target="_blank" rel="noreferrer">API health</a>
+            <span id="release-badge" class="badge">release: &mdash;</span>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <!-- ============================ Scene 1: the sky ============================ -->
+    <section id="scene-globe" class="scene" aria-label="Sky globe" hidden>
+      <div class="scene-stage">
+        <div id="globe-view" class="gl-view" tabindex="0" role="application"
+          aria-label="Sky globe. Arrow keys turn it, plus and minus zoom, Enter picks the point at the centre of the view. Or use the buttons and the lists beside it."></div>
+        <p id="globe-nogl" class="nogl" hidden>
+          This browser cannot draw the 3D globe. Everything still works from the lists and the
+          position form on the right.
+        </p>
+        <div class="hero">
+          <p class="eyebrow">NASA Space Apps 2026 &middot; Planet X and SPHEREx</p>
+          <h2>Find what moves<br /><em>in the infrared sky.</em></h2>
+          <p>Real NASA images of one sky patch, stacked through time. Things that move stand out.</p>
+          <div class="hero-cta">
+            <button type="button" class="primary" data-auto-demo>Watch the 1-minute demo</button>
+            <button type="button" data-open-target="wise0855">Open the fastest mover</button>
+          </div>
+          <p class="hero-note">Or drag the globe and click a pin.</p>
+        </div>
+        <div class="gl-foot">
+          <div id="globe-controls" class="gl-controls" role="group" aria-label="Globe controls">
+            <button type="button" data-globe="left" aria-label="Turn globe left">&larr;</button>
+            <button type="button" data-globe="up" aria-label="Turn globe up">&uarr;</button>
+            <button type="button" data-globe="down" aria-label="Turn globe down">&darr;</button>
+            <button type="button" data-globe="right" aria-label="Turn globe right">&rarr;</button>
+            <button type="button" data-globe="in" aria-label="Zoom in">+</button>
+            <button type="button" data-globe="out" aria-label="Zoom out">&minus;</button>
+            <button type="button" data-globe="centre">Pick the centre</button>
+          </div>
+          <ul class="gl-legend" aria-label="Legend">
+            <li><i class="key-pin" aria-hidden="true"></i> mission target</li>
+            <li><i class="key-tile" aria-hidden="true"></i> cube already built</li>
+            <li><i class="key-ecl" aria-hidden="true"></i> ecliptic</li>
+            <li><i class="key-gal" aria-hidden="true"></i> galactic equator</li>
+          </ul>
+          <p id="globe-view-readout" class="gl-readout" aria-hidden="true"></p>
+        </div>
+      </div>
+      <aside id="dock-globe" class="dock dock-right panel scene-side" aria-label="Sky globe panel">
+        <div class="dock-head">
+          <h2>Find a place in the sky</h2>
+          <button type="button" class="dock-close" aria-label="Hide this panel">&rsaquo;</button>
+        </div>
+        <section>
+          <form id="globe-search" class="search" role="search">
+            <label class="field">
+              <span>Object or position</span>
+              <input id="globe-q" type="text" maxlength="80" autocomplete="off"
+                placeholder="Barnard's Star, or 269.45 4.69" />
+            </label>
+            <button type="submit" class="primary">Find</button>
+          </form>
+          <p id="globe-search-msg" class="hint" role="status" aria-live="polite"></p>
+          <div id="globe-pick" class="pick" role="status" aria-live="polite">
+            <p class="hint">Click the sky to pick a position.</p>
+          </div>
+          <h3>Mission targets</h3>
+          <ul id="globe-targets" class="plain-list"></ul>
+          <h3>Cubes already built</h3>
+          <ul id="globe-cubes" class="plain-list"></ul>
+          <div class="row wrap">
+            <button id="globe-quick" type="button" class="primary">Quick start: Barnard's Star</button>
+            <button id="globe-tour" type="button" class="ghost">Guided tour</button>
+          </div>
+          <details class="fold">
+            <summary>Exact coordinates</summary>
+            <div class="row">
+              <label class="field"><span>RA (deg)</span><input id="globe-ra" type="number" step="0.0001" min="0" max="360" /></label>
+              <label class="field"><span>Dec (deg)</span><input id="globe-dec" type="number" step="0.0001" min="-90" max="90" /></label>
+            </div>
+            <button id="globe-build-coords" type="button" class="ghost">Go to these coordinates</button>
+          </details>
+          <details class="fold">
+            <summary>How to read the globe</summary>
+            <p class="hint">
+              You look at the sky from outside, like a desk globe (the real sky is the inside surface).
+              Grid lines: every 2 hours of right ascension (RA) and every 15&deg; of declination (Dec).
+            </p>
+            <p id="globe-stars-note" class="hint small"></p>
+          </details>
+        </section>
+      </aside>
+    </section>
+
+    <!-- ============================ Scene 3: the orbit ============================ -->
+    <section id="scene-orbit" class="scene" aria-label="Orbit view: why does it move?" hidden>
+      <div class="scene-stage orbit-stage">
+        <div id="orbit-view" class="gl-view" role="img"
+          aria-label="Earth circling the Sun. A sight line from Earth to a nearby object swings as Earth moves, while the distant background stays put."></div>
+        <p id="orbit-nogl" class="nogl" hidden>
+          This browser cannot draw the 3D orbit. The inset, the numbers and the text still work.
+        </p>
+        <div class="hero" aria-hidden="true">
+          <p class="eyebrow">Scene three &middot; parallax</p>
+          <h2>We move.<br /><em>So the near sky wobbles.</em></h2>
+        </div>
+        <p class="gl-caption">Not to scale: the Sun, Earth, the object and the background are drawn at made-up distances so the geometry is visible.
+          The orange diamond on the far sphere is where the sight line lands; its path is the wobble.</p>
+      </div>
+      <aside id="dock-orbit" class="dock dock-right panel scene-side" aria-label="Orbit view panel">
+        <div class="dock-head">
+          <h2>Why does it move?</h2>
+          <button type="button" class="dock-close" aria-label="Hide this panel">&rsaquo;</button>
+        </div>
+        <section>
+          <figure class="inset">
+            <canvas id="orbit-inset" width="360" height="360" role="img"
+              aria-label="Apparent path on the sky"></canvas>
+            <figcaption class="hint small">
+              Apparent position on the sky. <span class="swatch orange"></span> dashed: drift only.
+              <span class="swatch blue"></span> dashed: wobble only. White line: both together. Orange dot: now.
+            </figcaption>
+          </figure>
+          <div class="transport">
+            <button id="orbit-play" type="button" class="icon" aria-pressed="false">Play</button>
+            <label class="field grow">
+              <span>Time: <b id="orbit-time-out">0.00 years</b></span>
+              <input id="orbit-time" type="range" min="0" max="4" step="0.01" value="0" aria-label="Time in years" />
+            </label>
+          </div>
+          <label class="field">
+            <span>What is it?</span>
+            <select id="orbit-mode">
+              <option value="star">A star (1 to 100 parsecs)</option>
+              <option value="planet">A hypothetical distant planet (100 to 2000 AU)</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>Distance</span>
+            <input id="orbit-dist" type="range" min="0" max="1000" step="1" value="500" aria-label="Distance slider" />
+          </label>
+          <div class="row">
+            <label class="field"><span>Exact distance (<span id="orbit-dist-unit">pc</span>)</span>
+              <input id="orbit-dist-num" type="number" step="any" min="1" max="100" value="10" /></label>
+          </div>
+          <label class="field">
+            <span>Proper motion: <b id="orbit-pm-out"></b></span>
+            <input id="orbit-pm" type="range" min="0" max="12" step="0.01" value="0" aria-label="Proper motion in arcseconds per year" />
+          </label>
+          <label class="check">
+            <input id="orbit-detrend" type="checkbox" />
+            <span>Show the wobble only</span>
+          </label>
+          <button id="orbit-use-sim" type="button" class="ghost" hidden>Use the simulator's orbital drift for this distance</button>
+          <p id="orbit-preset-note" class="hint small" role="status"></p>
+          <details class="fold" open>
+            <summary>The numbers</summary>
+            <dl id="orbit-numbers" class="provenance" aria-live="polite"></dl>
+          </details>
+          <details class="fold">
+            <summary>In plain English</summary>
+            <p class="hint">
+              Earth circles the Sun once a year, so we look at the sky from a point that keeps changing.
+              A nearby object is seen against a slightly different part of the faraway background each season:
+              that shift is <b>parallax</b>, a yearly wobble. On top of it, the object may drift in a straight line
+              (<b>proper motion</b>). Wobble plus drift is the zigzag you see in the time cube.
+            </p>
+            <p class="hint">
+              Hold a finger at arm's length and blink one eye, then the other: the finger jumps against the wall.
+              Earth does the same thing from one side of its orbit to the other, six months apart.
+              The nearer the object, the bigger the jump: parallax in arcseconds is 1 divided by the distance in
+              parsecs, so a star 1.83 parsecs away swings by about half an arcsecond, and something 500 AU away
+              swings by about 413 arcseconds (roughly 67 SPHEREx pixels). Because the jump shrinks with distance,
+              a very distant object barely wobbles at all. Its own orbital drift shrinks too, but more slowly
+              than you might expect (as 1 over distance to the power 1.5, in the simulator's model), so a planet a few
+              hundred AU away is dominated by parallax and the tilt must follow that wobble, not a straight line.
+            </p>
+          </details>
+          <div class="row wrap">
+            <button id="orbit-back" type="button" class="primary">Back to the time cube</button>
+            <button id="orbit-to-globe" type="button" class="ghost">Sky</button>
+          </div>
+        </section>
+      </aside>
+    </section>
+
+    <section id="spectrum-panel" class="panel sheet" aria-label="Pixel spectrum and light curve" hidden></section>
+
+    <aside id="tour-panel" aria-label="Guided tour"></aside>
+
+    <!-- Reopen buttons for hidden panels, and the one shared help bubble. -->
+    <button id="handle-left" type="button" class="dock-handle left" hidden>Controls</button>
+    <button id="handle-right" type="button" class="dock-handle right" hidden>Tools</button>
+    <div id="help-pop" class="help-pop" role="tooltip" hidden></div>
+
+    <footer class="footer">
+      <span>Data: NASA/IPAC IRSA SPHEREx, unWISE, Gaia DR3. Not an official NASA product.</span>
+      <span>Motion candidates only; follow-up needed.</span>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
