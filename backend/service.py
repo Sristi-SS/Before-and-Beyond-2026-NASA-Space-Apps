@@ -27,23 +27,36 @@ RATE_WINDOW_S = float(os.environ.get("SPHEREX_RATE_WINDOW_S", "600"))
 class RateLimiter:
     """Per-IP sliding window.  In memory, per process; fine for one small server."""
 
-    def __init__(self) -> None:
+    MAX_ADDRESSES = 5000
+
+    def __init__(self, max_hits: int | None = None, window_s: float | None = None) -> None:
+        self._max = max_hits
+        self._window = window_s
         self._hits: dict[str, deque] = defaultdict(deque)
         self._lock = threading.Lock()
 
     def check(self, ip: str, now: float | None = None) -> float:
         """Record a hit.  Returns 0 if allowed, else seconds until a slot frees up."""
         now = time.monotonic() if now is None else now
+        limit = RATE_MAX if self._max is None else self._max
+        window = RATE_WINDOW_S if self._window is None else self._window
         with self._lock:
             q = self._hits[ip]
-            while q and now - q[0] >= RATE_WINDOW_S:
+            while q and now - q[0] >= window:
                 q.popleft()
-            if len(q) >= RATE_MAX:
-                return RATE_WINDOW_S - (now - q[0])
+            if len(q) >= limit:
+                return window - (now - q[0])
             q.append(now)
-            if len(self._hits) > 5000:  # forget idle addresses
-                for k in [k for k, v in self._hits.items() if not v]:
+            if len(self._hits) > self.MAX_ADDRESSES:
+                # Forget every address whose hits are all too old, not only this one.
+                for k in [k for k, v in self._hits.items() if not v or now - v[-1] >= window]:
                     del self._hits[k]
+                # Still too many (a flood of new addresses): drop the oldest half.
+                if len(self._hits) > self.MAX_ADDRESSES:
+                    old = sorted(self._hits, key=lambda k: self._hits[k][-1])
+                    for k in old[: len(old) // 2]:
+                        if k != ip:
+                            del self._hits[k]
             return 0.0
 
     def reset(self) -> None:
@@ -52,14 +65,39 @@ class RateLimiter:
 
 
 limiter = RateLimiter()
+# Motion maps and candidate searches use a lot of CPU, so they get their own limit.
+ANALYSIS_MAX = int(os.environ.get("SPHEREX_ANALYSIS_MAX", "40"))
+analysis_limiter = RateLimiter(ANALYSIS_MAX, 60.0)
+
+
+def forwarded_ip(headers, fallback: str) -> str:
+    """The caller's address.  Behind a trusted proxy (SPHEREX_TRUST_PROXY=1) it comes from
+    X-Forwarded-For, counted from the RIGHT: the last SPHEREX_PROXY_HOPS entries are the
+    ones our own proxies added.  Entries further left are sent by the caller and can be faked."""
+    if os.environ.get("SPHEREX_TRUST_PROXY") == "1":
+        parts = [p.strip() for p in headers.get("x-forwarded-for", "").split(",") if p.strip()]
+        if parts:
+            try:
+                hops = max(1, int(os.environ.get("SPHEREX_PROXY_HOPS", "1")))
+            except ValueError:
+                hops = 1
+            return parts[max(0, len(parts) - hops)]
+    return fallback
 
 
 def client_ip(request: Request) -> str:
-    if os.environ.get("SPHEREX_TRUST_PROXY") == "1":
-        fwd = request.headers.get("x-forwarded-for", "")
-        if fwd:
-            return fwd.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    return forwarded_ip(request.headers, request.client.host if request.client else "unknown")
+
+
+def enforce_analysis_limit(request: Request) -> None:
+    wait = analysis_limiter.check(client_ip(request))
+    if wait > 0:
+        raise HTTPException(
+            429,
+            f"Too many searches from this address (limit {ANALYSIS_MAX} per minute). "
+            f"Try again in about {int(wait) + 1} second(s).",
+            headers={"Retry-After": str(int(wait) + 1)},
+        )
 
 
 def enforce_build_limit(request: Request, params: dict) -> None:

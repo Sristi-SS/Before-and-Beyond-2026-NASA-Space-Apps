@@ -13,8 +13,12 @@ suite are what was actually measured.
 | `PORT` | `8000` | Listen port. |
 | `SPHEREX_DATA_DIR` | `./data` | Folder holding `cache/`. |
 | `SPHEREX_RATE_MAX` / `SPHEREX_RATE_WINDOW_S` | `6` / `600` | New cube builds allowed per IP per window (429 beyond). Cached cubes are not counted. |
-| `SPHEREX_TRUST_PROXY` | unset | Set to `1` behind a reverse proxy to use `X-Forwarded-For` for the rate limit. |
-| `SPHEREX_HW_TOKEN` | unset | Optional shared token for `/ws/hardware` (`?token=...`). Never commit it. |
+| `SPHEREX_TRUST_PROXY` | unset | Set to `1` behind a reverse proxy to use `X-Forwarded-For` for the rate limit. The address is read from the right side of the header, so a caller cannot fake it. |
+| `SPHEREX_PROXY_HOPS` | `1` | How many proxies of your host add an entry to `X-Forwarded-For`. |
+| `SPHEREX_ANALYSIS_MAX` | `40` | Motion-map and candidate searches allowed per address per minute. |
+| `SPHEREX_CORS_ORIGINS` | `*` | Comma-separated list of sites that may read the API. The data is public and there is no login, so `*` is safe. |
+| `SPHEREX_ALLOWED_ORIGINS` | unset | Extra sites whose pages may open `/ws/hardware`. This site and localhost are always allowed. |
+| `SPHEREX_HW_TOKEN` | unset | Shared token for `/ws/hardware` (`?token=...`). Never commit it. With no token, a device is accepted only from the same machine or the local network. Set a token for any device that connects over the internet, and use `wss://`. |
 
 ## (a) Local run
 

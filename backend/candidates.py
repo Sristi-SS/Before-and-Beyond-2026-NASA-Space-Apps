@@ -15,10 +15,10 @@ from collections import OrderedDict
 from typing import Sequence
 
 import numpy as np
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request
 from scipy import ndimage
 
-from . import align, config, jobs, ranker, tilt
+from . import align, config, jobs, ranker, service, tilt
 
 router = APIRouter()
 _KEY_RE = re.compile(r"^[0-9a-f]{20}$")
@@ -104,6 +104,7 @@ def _now_mjd() -> float:
 
 @router.get("/api/jobs/{key}/candidates")
 def job_candidates(
+    request: Request,
     key: str,
     detector: int = Query(..., ge=1, le=102),
     span: float = Query(12.0, ge=1.0, le=60.0),
@@ -116,6 +117,7 @@ def job_candidates(
         raise HTTPException(404, "job not found")
     if detector > 6 and detector not in (101, 102):
         raise HTTPException(422, "detector must be 1-6, 101 or 102")
+    service.enforce_analysis_limit(request)
     state = job.status()
     frames = sorted((m for m in state.get("frames", []) if m.get("status") == "ok"), key=lambda m: m["mjd"])
     used = [m for m in frames if m.get("detector") == detector]

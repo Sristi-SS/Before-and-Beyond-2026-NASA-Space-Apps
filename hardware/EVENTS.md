@@ -7,6 +7,8 @@ WebSocket endpoint `/ws/hardware` on the backend. Messages are single JSON objec
 
 Connect with `?role=device` (ESP32, simulator) or `?role=browser` (the website, the default).
 If the server has `SPHEREX_HW_TOKEN` set, add `&token=<value>`. Over HTTPS use `wss://`.
+With no token set, the server accepts a device only from the same machine or the local network.
+A web page from another site cannot open this socket. Each socket may send 60 messages per second.
 The site works fully with no hardware.
 
 ## Device to browser

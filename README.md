@@ -254,7 +254,7 @@ The page mirrors its state in the URL so a view can be shared:
 
 ### Automated tests
 
-`python -m pytest backend\tests -q -k "not real_frames"` → **81 passed, 2 skipped** (about 90 s).
+`python -m pytest backend\tests -q -k "not real_frames"` → **87 passed, 2 skipped** (about 90 s).
 `python -m pytest backend\tests -q -k real_frames` → **1 passed** (about 4.5 min; it
 needs the cache and skips cleanly without one). Run on 2026-11-14.
 
@@ -699,6 +699,23 @@ Added 2026-11-14.
   in the stack (blue = first, orange = last), not the colour of the source. Pixels are drawn as sharp
   squares (nearest-neighbour), with no smoothing. The image on the timeline is drawn in full with a white frame.
   This view is for looking; no result is measured from it.
+
+## Safety limits (hardening)
+
+- **Hardware socket (`/ws/hardware`).** With `SPHEREX_HW_TOKEN` set, every connection needs the token.
+  With no token, a device is accepted only from the same machine or the local network.
+  A web page from another site cannot open the socket (the `Origin` must match the site).
+  Each socket may send 60 messages per second; a message may be 1024 bytes; 16 sockets at most.
+- **Heavy searches.** Motion-map and candidate searches are limited to 40 per address per minute
+  (`SPHEREX_ANALYSIS_MAX`). New cube builds keep their own limit (6 per 10 minutes).
+- **Limiter memory.** Each limiter holds at most 5000 addresses; old ones are removed.
+- **Behind a proxy.** With `SPHEREX_TRUST_PROXY=1` the caller address is read from the right side
+  of `X-Forwarded-For` (`SPHEREX_PROXY_HOPS`, default 1), so a caller cannot fake it.
+- **CORS.** `SPHEREX_CORS_ORIGINS` narrows which sites may read the API (default: any; the data is
+  public and there is no login).
+- **Not done:** the ESP32 sketch still sends the token in the URL and uses `ws://` by default.
+  Use `wss://` and a token for any device that connects over the internet.
+  No dependency scan and no penetration test were made.
 
 ## Data assumptions and limitations
 

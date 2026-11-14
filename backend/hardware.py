@@ -5,15 +5,26 @@ AI-assistance: this file was written with AI assistance; see README.md "AI assis
 Connect to ``/ws/hardware?role=device`` (an ESP32, or hardware/simulate_device.py) or
 ``/ws/hardware?role=browser`` (the default; the website).  Device messages are
 validated and forwarded to every browser; browser messages go to every device.
-Schema: hardware/EVENTS.md.  Optional shared token: env SPHEREX_HW_TOKEN, sent
-as ``?token=...``.  The site works fully with no hardware connected.
+Schema: hardware/EVENTS.md.  The site works fully with no hardware connected.
+
+Who may connect:
+* With a shared token set (env SPHEREX_HW_TOKEN, sent as ``?token=...``), every
+  connection needs it.
+* With no token set, a device is accepted only from the same machine or the local
+  network, so a public server never takes hardware events from strangers.
+* A browser page must come from this site (its Origin must match the Host), from
+  localhost, or from a site listed in SPHEREX_ALLOWED_ORIGINS.
+* Each socket may send at most MAX_MESSAGES_PER_S messages per second.
 """
 from __future__ import annotations
 
 import hmac
+import ipaddress
 import json
 import math
 import os
+import time
+from urllib.parse import urlsplit
 from typing import Any, Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
@@ -22,6 +33,8 @@ router = APIRouter()
 
 MAX_MESSAGE_BYTES = 1024
 MAX_CONNECTIONS = 16
+MAX_MESSAGES_PER_S = 60
+_LOCAL_NAMES = ("localhost", "testclient")      # "testclient" is the in-process test client
 MAX_OLED_LINES = 8
 MAX_OLED_CHARS = 32
 
@@ -106,14 +119,45 @@ class _Hub:
 hub = _Hub()
 
 
-def _token_ok(given: Optional[str]) -> bool:
+def _is_local(host: str) -> bool:
+    if host in _LOCAL_NAMES:
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return ip.is_loopback or ip.is_private or ip.is_link_local
+
+
+def _token_ok(given: Optional[str], role: str = "browser", host: str = "localhost") -> bool:
     expected = os.environ.get("SPHEREX_HW_TOKEN", "")
-    return not expected or hmac.compare_digest((given or "").encode(), expected.encode())
+    if expected:
+        return hmac.compare_digest((given or "").encode(), expected.encode())
+    # No token configured: browsers may listen, devices must be on the local network.
+    return role != "device" or _is_local(host)
+
+
+def _origin_ok(ws: WebSocket) -> bool:
+    """Browsers always send Origin; an ESP32 or a script does not (the token covers those)."""
+    origin = ws.headers.get("origin")
+    if not origin:
+        return True
+    allowed = [o.strip().rstrip("/") for o in os.environ.get("SPHEREX_ALLOWED_ORIGINS", "").split(",")]
+    if origin.rstrip("/") in allowed:
+        return True
+    parts = urlsplit(origin)
+    if parts.hostname and _is_local(parts.hostname):
+        return True
+    return bool(parts.netloc) and parts.netloc == ws.headers.get("host", "")
 
 
 @router.websocket("/ws/hardware")
 async def hardware_ws(ws: WebSocket, role: str = "browser", token: Optional[str] = None) -> None:
-    if role not in ("device", "browser") or not _token_ok(token) or hub.count() >= MAX_CONNECTIONS:
+    from .service import forwarded_ip     # late import keeps the module order simple
+
+    host = forwarded_ip(ws.headers, ws.client.host if ws.client else "unknown")
+    if (role not in ("device", "browser") or not _origin_ok(ws) or not _token_ok(token, role, host)
+            or hub.count() >= MAX_CONNECTIONS):
         await ws.close(code=1008)
         return
     await ws.accept()
@@ -121,9 +165,16 @@ async def hardware_ws(ws: WebSocket, role: str = "browser", token: Optional[str]
     mine.add(ws)
     # Tell browsers whether a device is present (they show it only with hw=1).
     await hub.send(hub.browsers, json.dumps({"type": "presence", "devices": len(hub.devices)}))
+    window_start, sent = time.monotonic(), 0
     try:
         while True:
             text = await ws.receive_text()
+            now = time.monotonic()
+            if now - window_start >= 1.0:
+                window_start, sent = now, 0
+            sent += 1
+            if sent > MAX_MESSAGES_PER_S:
+                continue                    # too fast: drop without an answer
             clean = None
             if len(text.encode("utf-8")) <= MAX_MESSAGE_BYTES:
                 try:

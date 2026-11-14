@@ -24,9 +24,12 @@ from . import (cache, candidates, config, extras, group, hardware, jobs, refresh
                service, spherex, tilt)
 
 app = FastAPI(title="SPHEREx Time Cube", version="0.1.0")
+# The API is read-only public data with no login, so any origin may read it by default.
+# Set SPHEREX_CORS_ORIGINS (comma-separated) to allow only your own site.
+_CORS = [o.strip() for o in os.environ.get("SPHEREX_CORS_ORIGINS", "*").split(",") if o.strip()] or ["*"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_CORS,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["X-Score", "X-Min", "X-Max", "X-Npix", "X-Nsl", "X-Shifts",
@@ -255,6 +258,7 @@ def contact_sheet(key: str):
 
 @app.get("/api/jobs/{key}/motionmap")
 def motion_map(
+    request: Request,
     key: str,
     detector: int = Query(3, ge=1, le=MAX_DETECTOR),
     span: float = Query(12.0, ge=1.0, le=60.0),
@@ -266,6 +270,7 @@ def motion_map(
     both ascending from ``-span`` to ``+span`` (vx positive = east).
     """
     _check_detector(detector)
+    service.enforce_analysis_limit(request)
     cube, meta = _load_frames(key, detector)
     if cube.shape[0] < 3:
         raise HTTPException(400, "the motion map needs at least 3 frames")

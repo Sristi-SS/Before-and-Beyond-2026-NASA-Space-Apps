@@ -345,7 +345,7 @@ limit makes the project ineligible.
 ## 12. Things only the team can do
 
 - [ ] Deploy to a public URL. This is not done. The README describes a local run at `http://127.0.0.1:8000` only.
-- [ ] Make the repository public.
+- [x] Make the repository public.
 - [ ] Record the 30-second video, with adult narration, from the script in section 8.
 - [ ] Request a FortiGuard web filter classification for the new site, after it is deployed.
 - [ ] Verify every claim the README marks as unverified. These are: the WebGL 3D layout (not pixel-inspected); flag bit meanings and the WAVE-TAB calibration (not checked against mission papers); the five-target visibility table (a screening summary only); Gaia completeness for faint or fast movers, and the note that WISE 0855 has no Gaia entry; the VizieR paths (Gaia fallback and the Hipparcos star list: VizieR did not answer from the test machine); the Dockerfile, the deployment steps and the ESP32 sketch (never run); the status badge states other than "online".
