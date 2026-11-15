@@ -1,29 +1,21 @@
 # SPHEREx Time Cube
 
-A public, no-login web tool that turns real SPHEREx archival images of one
-patch of sky into a three-dimensional **time cube**, then lets you test whether
-something in that cube is moving by **shifting and stacking** the frames.
-
 **Explore how a patch of infrared sky changes over time and test whether a source follows a chosen motion.**
 
-[Launch the Website](https://spherex-time-cube.onrender.com/) ·
-[View the Demo Video](Placeholder Youtube Link)
+SPHEREx Time Cube is a public, no-login tool for viewing aligned SPHEREx images of one sky region as a timeline and interactive 3D cube. Use shift-and-stack to test a trial motion. Separately labeled WISE observations extend the timeline for selected examples.
 
-Built for the 2026 NASA Space Apps Challenge, *Planet X and SPHEREx*.
-
-> This is an independent hackathon project, not an official NASA product. It
-> uses no NASA logos or insignia. Everything shown comes from the public
-> NASA/IPAC IRSA archive. Any moving object the tool highlights is a
-> **candidate**, never a confirmed discovery.
-
----
+[Launch the live app](https://spherex-time-cube.onrender.com/) ·
+[Watch the demo](REPLACE_WITH_PUBLIC_DEMO_LINK) ·
+[View the source code](https://github.com/AdityaGaur77/Before-and-Beyond-2026-NASA-Space-Apps)
 
 ## About the challenge
 
-This is the team repository for the 2026 NASA Space Apps Challenge ("Planet X and SPHEREx").
-The NASA Space Apps Challenge is a hackathon for coders, scientists, designers, storytellers, makers, technologists, and innovators around the world to come together and use open data from NASA and its Space Agency Partners to create solutions to challenges we face on Earth and in space.
+The NASA Space Apps **Planet X and SPHEREx** challenge asks for a public tool that makes it easier to explore how SPHEREx sky images change over time. SPHEREx observes the sky in 102 near-infrared bands, and observations from different times can reveal sources that move or vary. Because wavelength varies with position in a SPHEREx image, comparisons also need to keep the image position and wavelength information straight. [Challenge description](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [IRSA SPHEREx overview](https://irsa.ipac.caltech.edu/onlinehelp/spherex/spherex/overview.html)
 
-The project is released under the MIT License (see `LICENSE`).
+**Scope:** The app analyzes selected sky patches; it does not display the full sky or all 102 bands for every target. WISE observations are supplementary and labeled separately. Results are candidates for follow-up, not confirmed discoveries.
+
+## Features 
+
 
 ## Status
 
