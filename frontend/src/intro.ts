@@ -209,6 +209,7 @@ function open(root: HTMLElement): void {
     closeFn = null;
     markSeen();
     lastFocus?.focus?.();
+    window.dispatchEvent(new Event("intro:closed"));
   };
 
   back.onclick = () => showCard(card - 1, true);

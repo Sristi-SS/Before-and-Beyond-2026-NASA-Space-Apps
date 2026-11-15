@@ -1,6 +1,7 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
 // Question-mark tips: a tiny "?" on a control; point at it (or focus the control) to read what it does.
 // The "?" is drawn with CSS, so a button's text content does not change.
+import { showBubble } from "./bubble";
 
 /** [control, tip, optional element that carries the "?" when the control itself cannot]. */
 const TIPS: Array<[string, string, string?]> = [
@@ -167,11 +168,18 @@ export function initHelp(): void {
     toggle?.setAttribute("aria-pressed", String(on));
     if (!on) hide();
   };
-  apply(stored !== "off");
+  // Tips start hidden (the intro does the first teaching); the ? button shows them and says how they work.
+  apply(stored === "on");
   toggle?.addEventListener("click", () => {
     const on = document.body.classList.contains("no-help");
     apply(on);
     try { window.localStorage.setItem("tips", on ? "on" : "off"); } catch { /* private mode */ }
+    showBubble(on
+      ? {
+          anchor: toggle, side: "below", ms: 9000, title: "Tips on!",
+          text: "If you're confused about what something means, press the question marks that now appear next to it.",
+        }
+      : { anchor: toggle, side: "below", ms: 5000, title: "Tips off", text: "Press ? again any time to bring the question marks back." });
   });
 
   attach();

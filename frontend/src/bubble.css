@@ -1,0 +1,43 @@
+/* AI-assistance: this file was written with AI assistance; see README.md "AI assistance". */
+/*
+ * Pixel speech bubbles (src/bubble.ts): white card, black pixel border with stepped corners,
+ * a hard maze-blue shadow and a pixel tail.  Pixel font for the title, the site's sans for the note.
+ */
+.bubble {
+  --px: 4px;
+  position: fixed; z-index: 95; width: max-content; max-width: min(300px, calc(100vw - 24px));
+  filter: drop-shadow(5px 5px 0 var(--wall, #2f5bff));
+  animation: bubble-pop 180ms steps(3, end);
+}
+.bubble-frame, .bubble-body {
+  clip-path: polygon(
+    calc(2 * var(--px)) 0, calc(100% - 2 * var(--px)) 0, calc(100% - 2 * var(--px)) var(--px), calc(100% - var(--px)) var(--px),
+    calc(100% - var(--px)) calc(2 * var(--px)), 100% calc(2 * var(--px)), 100% calc(100% - 2 * var(--px)),
+    calc(100% - var(--px)) calc(100% - 2 * var(--px)), calc(100% - var(--px)) calc(100% - var(--px)),
+    calc(100% - 2 * var(--px)) calc(100% - var(--px)), calc(100% - 2 * var(--px)) 100%, calc(2 * var(--px)) 100%,
+    calc(2 * var(--px)) calc(100% - var(--px)), var(--px) calc(100% - var(--px)), var(--px) calc(100% - 2 * var(--px)),
+    0 calc(100% - 2 * var(--px)), 0 calc(2 * var(--px)), var(--px) calc(2 * var(--px)), var(--px) var(--px),
+    calc(2 * var(--px)) var(--px));
+}
+.bubble-frame { background: #000; padding: var(--px); }
+.bubble-body { position: relative; background: #fff; color: #000; padding: 14px 16px 14px; display: grid; gap: 8px; }
+.bubble-title { font: 10px/1.5 var(--pixel); text-transform: uppercase; color: #000; padding-right: 22px; }
+.bubble-text { font: 500 14px/1.5 var(--sans); color: #111; }
+.bubble .bubble-x {
+  position: absolute; top: 8px; right: 8px; width: 22px; height: 22px; padding: 0; display: grid; place-items: center;
+  font: 9px/1 var(--pixel); color: #000; background: #fff; border: 2px solid #000; border-radius: 0;
+}
+.bubble .bubble-x:hover:not(:disabled) { background: var(--glow, #5ef2ff); border-color: #000; }
+.bubble .bubble-x:focus-visible { outline: 2px solid var(--wall, #2f5bff); outline-offset: 2px; }
+
+/* The tail overlaps the border by one pixel cell so the white runs into it. */
+.bubble-tail { position: absolute; display: block; }
+.bubble.above .bubble-tail { top: calc(100% - var(--px)); left: var(--tail-x, 24px); }
+.bubble.below .bubble-tail { bottom: calc(100% - var(--px)); left: var(--tail-x, 24px); transform: scaleY(-1); }
+/* Turned a quarter clockwise, the downward tail points left at the control. */
+.bubble.right .bubble-tail { left: -12px; top: 18px; transform: rotate(90deg); }
+
+@keyframes bubble-pop {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}

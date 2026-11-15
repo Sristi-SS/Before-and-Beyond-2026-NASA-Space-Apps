@@ -10,8 +10,10 @@ import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { BrightStars } from "./api";
 
 const D2R = Math.PI / 180;
-const ORANGE = 0xf08a3c;
-const BLUE = 0x4aa3df;
+// Only the site theme's colours (arcade.css): maze blue, amber and azure for data, yellow stars, white.
+const ORANGE = 0xffa24a; // --amber
+const BLUE = 0x58b4ff; // --azure
+const WALL = 0x2f5bff; // --wall
 const OBLIQUITY = 23.4393 * D2R;
 
 /** RA/Dec (degrees) to a point on a sphere of radius r.  y is the north celestial pole; RA grows counter-clockwise seen from the north. */
@@ -206,7 +208,8 @@ function starAtlas(): THREE.CanvasTexture {
   canvas.width = 2 * n;
   canvas.height = n;
   const c = canvas.getContext("2d")!;
-  const ink: Record<string, string> = { y: "#f6b92b", d: "#d4860f", h: "#ffe27a", w: "#fffbe6" };
+  // Title yellow (--title) with its purple shadow (--title-shadow) as the outline.
+  const ink: Record<string, string> = { y: "#ffd23f", d: "#e0a800", h: "#ffe98a", w: "#ffffff" };
   const shapes = [
     (x: number, y: number) => STAR_FIVE[y][x],
     sparkleCell,
@@ -217,7 +220,7 @@ function starAtlas(): THREE.CanvasTexture {
       for (let x = 0; x < n; x++) {
         const v = cell(x, y);
         if (v !== ".") c.fillStyle = ink[v];
-        else if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) c.fillStyle = "#1b1640";
+        else if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) c.fillStyle = "#3a2aa6";
         else continue;
         c.fillRect(k * n + x, y, 1, 1);
       }
@@ -319,7 +322,7 @@ export class Globe {
     // A faint body so the sphere reads as a solid ball.
     const body = new THREE.Mesh(
       new THREE.SphereGeometry(0.995, 48, 32),
-      new THREE.MeshBasicMaterial({ color: 0x0c1722, transparent: true, opacity: 0.55, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0x02030c, transparent: true, opacity: 0.7, depthWrite: false }),
     );
     this.scene.add(body);
 
@@ -335,7 +338,7 @@ export class Globe {
     this.scene.add(this.starGroup, this.pinGroup);
 
     this.pinTex = iconTexture((c, s) => {
-      c.strokeStyle = "#f08a3c";
+      c.strokeStyle = "#ffa24a";
       c.lineWidth = 6;
       c.beginPath();
       c.arc(s / 2, s / 2, s * 0.3, 0, Math.PI * 2);
@@ -352,7 +355,7 @@ export class Globe {
       c.stroke();
     });
     this.tileTex = iconTexture((c, s) => {
-      c.fillStyle = "#4aa3df";
+      c.fillStyle = "#58b4ff";
       c.fillRect(s * 0.22, s * 0.22, s * 0.56, s * 0.56);
       c.strokeStyle = "#ffffff";
       c.lineWidth = 5;
@@ -367,7 +370,7 @@ export class Globe {
       c.moveTo(6, s / 2);
       c.lineTo(s - 6, s / 2);
       c.stroke();
-      c.strokeStyle = "#f08a3c";
+      c.strokeStyle = "#ffa24a";
       c.lineWidth = 5;
       c.beginPath();
       c.arc(s / 2, s / 2, s * 0.22, 0, Math.PI * 2);
@@ -394,8 +397,8 @@ export class Globe {
   // -- scene content -------------------------------------------------------
   private buildGrid(): void {
     const grid = new THREE.Group();
-    const gridMat = new THREE.LineBasicMaterial({ color: 0x4d6a85, transparent: true, opacity: 0.32, depthWrite: false });
-    const eqMat = new THREE.LineBasicMaterial({ color: 0x7fb4dc, transparent: true, opacity: 0.55, depthWrite: false });
+    const gridMat = new THREE.LineBasicMaterial({ color: WALL, transparent: true, opacity: 0.3, depthWrite: false });
+    const eqMat = new THREE.LineBasicMaterial({ color: WALL, transparent: true, opacity: 0.75, depthWrite: false });
     for (let ra = 0; ra < 360; ra += 30) {
       const pts = linePoints((u) => radecToVec(ra, -90 + 180 * u), 60);
       grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), gridMat));
@@ -424,18 +427,18 @@ export class Globe {
     // Labels: RA every 2 h on the equator, in the site's mono, Dec every 30 degrees on the RA 0 meridian, line names.
     const labels = new THREE.Group();
     for (let ra = 0; ra < 360; ra += 30) {
-      const s = textSprite(`${ra / 15}h`, { height: 0.026, color: "#9db6cc", font: "mono" });
+      const s = textSprite(`${ra / 15}h`, { height: 0.026, color: "#8a94b4", font: "mono" });
       s.position.copy(radecToVec(ra, 0, 1.03));
       labels.add(s);
     }
     for (const dec of [-60, -30, 30, 60]) {
-      const s = textSprite(`${dec > 0 ? "+" : "−"}${Math.abs(dec)}°`, { height: 0.026, color: "#9db6cc", font: "mono" });
+      const s = textSprite(`${dec > 0 ? "+" : "−"}${Math.abs(dec)}°`, { height: 0.026, color: "#8a94b4", font: "mono" });
       s.position.copy(radecToVec(15, dec, 1.03));
       labels.add(s);
     }
-    const eclLabel = textSprite("ECLIPTIC", { height: 0.03, color: "#ffb46e", font: "pixel" });
+    const eclLabel = textSprite("ECLIPTIC", { height: 0.03, color: "#ffa24a", font: "pixel" });
     eclLabel.position.copy(eqXyzToView(Math.cos(1.9), Math.sin(1.9) * Math.cos(OBLIQUITY), Math.sin(1.9) * Math.sin(OBLIQUITY)).multiplyScalar(1.04));
-    const galLabel = textSprite("GALACTIC EQUATOR", { height: 0.03, color: "#8fd3ff", font: "pixel" });
+    const galLabel = textSprite("GALACTIC EQUATOR", { height: 0.03, color: "#58b4ff", font: "pixel" });
     const lg = 0.75;
     const gx = [Math.cos(lg), Math.sin(lg), 0];
     galLabel.position.copy(eqXyzToView(
@@ -488,7 +491,7 @@ export class Globe {
     this.starLabels = [];
     for (const s of [...data.stars].sort((a, b) => a.mag - b.mag)) {
       if (!s.name || s.mag > 1.7) continue;
-      const label = textSprite(s.name, { height: 0.024, color: "#f1f4fb", font: "sans" });
+      const label = textSprite(s.name, { height: 0.024, color: "#e6eaf7", font: "sans" });
       // Centred under the star, with a small gap below the star picture.
       label.center.set(0.5, 1.55);
       label.position.copy(radecToVec(s.ra_deg, s.dec_deg, 1.0));
@@ -523,7 +526,7 @@ export class Globe {
       this.pinGroup.add(sprite);
       let label: THREE.Sprite | null = null;
       if (target) {
-        label = textSprite(pin.label, { height: 0.026, color: "#ffd2a8", font: "pixel" });
+        label = textSprite(pin.label, { height: 0.026, color: "#ffd23f", font: "pixel" });
         label.center.set(-0.08, 0.5);
         label.position.copy(dir).multiplyScalar(1.004);
         this.pinGroup.add(label);

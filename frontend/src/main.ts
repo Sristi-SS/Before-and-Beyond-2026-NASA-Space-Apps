@@ -8,6 +8,7 @@ import { flushState } from "./state";
 import { showScene } from "./scenes";
 import { initHelp } from "./help";
 import { initIntro } from "./intro";
+import { showBubble } from "./bubble";
 import { CandidatePanel } from "./candidates";
 import { UpdatePanel } from "./updates";
 import * as api from "./api";
@@ -272,7 +273,25 @@ initScenes();
 initShell();
 initHelp();
 initIntro();
+presetBubbleOnGlobe();
 void init();
+
+/** On the globe, point out that Barnard's Star is a preset (once per browser, after the intro if it is showing). */
+function presetBubbleOnGlobe(): void {
+  const show = (): void => {
+    const start = document.querySelector<HTMLElement>(".hero [data-intro-start]");
+    if (document.body.dataset.scene !== "globe" || !start) return;
+    showBubble({
+      anchor: start, side: "right", once: "bubble-preset-globe", title: "Preset!",
+      text: "Barnard's Star is a preset: its images are saved, so it opens instantly. Every cube under \u201cCubes already built\u201d is saved too.",
+    });
+  };
+  if (document.body.classList.contains("intro-open")) {
+    window.addEventListener("intro:closed", () => window.setTimeout(show, 400), { once: true });
+  } else {
+    window.setTimeout(show, 1200);
+  }
+}
 
 async function init(): Promise<void> {
   initStatusBadge();
@@ -466,6 +485,12 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
   await loadGroup(group, hydrate ? state.t : 0, hydrate);
   candidatePanel.reset();
   if (hydrate && (state.vx !== 0 || state.vy !== 0)) void runTilt();
+  if (/barnard/i.test(status.target?.name ?? "") && !useCatalogue.disabled) {
+    window.setTimeout(() => showBubble({
+      anchor: useCatalogue, side: "below", once: "bubble-preset-cube", title: "Preset loaded!",
+      text: "Barnard's Star's motion is already known. Press Catalogue motion to stack the images along its path and watch the star sharpen.",
+    }), 800);
+  }
 }
 
 /** Click-for-spectrum: measure every frame at this pixel and open the panel. */

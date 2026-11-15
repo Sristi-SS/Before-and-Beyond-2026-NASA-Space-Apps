@@ -119,6 +119,3 @@ body.intro-open { overflow: hidden; }
   .intro .intro-cards h2 { font-size: 16px; }
   .intro .intro-btn { padding: 12px 14px; }
 }
-
-/* The globe page's "Replay the intro" link sits in a hero that ignores the pointer. */
-.hero [data-intro-replay] { pointer-events: auto; font-size: inherit; }

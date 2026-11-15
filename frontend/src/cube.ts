@@ -12,7 +12,7 @@ export interface CubeSlice {
 const PLANE = 2.0;          // side of one image in scene units
 const LENGTH = 5.4;         // length of the whole stack along the time axis
 const FIRST = new THREE.Color(0x58b4ff);   // first image in the stack: blue
-const MID = new THREE.Color(0xe9e6ff);
+const MID = new THREE.Color(0xffffff);
 const LAST = new THREE.Color(0xffa24a);    // last image in the stack: orange
 const LABEL_FONT = '"JetBrains Mono Variable", ui-monospace, Consolas, monospace';
 
@@ -260,7 +260,7 @@ export class CubeView {
       const axis = new THREE.BufferGeometry().setFromPoints([
         new THREE.Vector3(h, -h, this.z(0)), new THREE.Vector3(h, -h, this.z(n - 1) + 0.35),
       ]);
-      this.guides.add(new THREE.Line(axis, new THREE.LineBasicMaterial({ color: 0xa9b2cc, transparent: true, opacity: 0.7 })));
+      this.guides.add(new THREE.Line(axis, new THREE.LineBasicMaterial({ color: 0x2f5bff, transparent: true, opacity: 0.7 })));
     }
 
     this.buildLabels();
@@ -283,7 +283,7 @@ export class CubeView {
     this.slices.forEach((slice, i) => {
       if (i % stride !== 0 && i !== n - 1) return;
       if (i === n - 1 && (n - 1) % stride !== 0 && (n - 1) % stride < stride / 2) return;   // too close to the one before
-      const sprite = textSprite([{ text: slice.label, size: 76, weight: 500, color: "#c3cae0" }]);
+      const sprite = textSprite([{ text: slice.label, size: 76, weight: 500, color: "#8a94b4" }]);
       sprite.scale.set(1.25, 0.3125, 1);
       sprite.position.set(h + 0.22, -h, this.z(i));
       this.labelGroup.add(sprite);
@@ -291,7 +291,7 @@ export class CubeView {
     });
     this.labelGroup.add(new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints(ticks),
-      new THREE.LineBasicMaterial({ color: 0xa9b2cc, transparent: true, opacity: 0.7 }),
+      new THREE.LineBasicMaterial({ color: 0x2f5bff, transparent: true, opacity: 0.7 }),
     ));
     this.placeActiveLabel();
   }
@@ -307,7 +307,7 @@ export class CubeView {
     if (!slice) return;
     const sprite = textSprite([
       { text: slice.label, size: 84, weight: 700, color: "#ffffff" },
-      { text: slice.sublabel, size: 52, weight: 400, color: "#c3cae0" },
+      { text: slice.sublabel, size: 52, weight: 400, color: "#8a94b4" },
     ]);
     sprite.scale.set(1.9, 0.475, 1);
     sprite.position.set(-PLANE / 2, PLANE / 2 + 0.3, this.z(this.active));

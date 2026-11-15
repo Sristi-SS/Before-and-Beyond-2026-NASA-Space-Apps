@@ -28,6 +28,8 @@
   --lumen: var(--glow);
   --lumen-dim: rgba(94, 242, 255, 0.14);
   --radius: 8px;
+  /* The timeline and colour keys follow the cube's own ramp: first epoch azure, then white, last amber. */
+  --spectrum: linear-gradient(90deg, var(--azure) 0%, #fff 50%, var(--amber) 100%);
 }
 
 body {
@@ -161,9 +163,12 @@ button > .help-dot { background: #000; }
 
 /* Globe legend: the two sky lines, bold and in their line colours, as drawn on the globe. */
 .gl-legend .key-line { font-weight: 700; }
-.gl-legend .key-line.ecl { color: #ffb46e; }
-.gl-legend .key-line.gal { color: #8fd3ff; }
+.gl-legend .key-line.ecl { color: var(--amber); }
+.gl-legend .key-line.gal { color: var(--azure); }
 .key-ecl, .key-gal { width: 20px; border-top-width: 3px; }
+
+/* The cube's colour ramp (first epoch to last) runs through white, as drawn. */
+.swatch.ramp { background: linear-gradient(90deg, var(--azure), #fff, var(--amber)); }
 
 /* Projection mode keeps its own high-contrast walls. */
 body.projection .panel, body.projection .deck { border: 4px double #fff; }
