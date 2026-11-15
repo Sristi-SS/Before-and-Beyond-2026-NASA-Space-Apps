@@ -8,7 +8,7 @@ const STEPS: Record<string, Step[]> = {
   cube: [
     {
       anchor: ".view-seg", side: "below", title: "Five ways to look",
-      text: "CUBE stacks the years like slices of bread. BLINK, COLOUR and COMPARE show the same pictures other ways.",
+      text: "CUBE stacks the years like slices of bread. BLINK, COLOUR and COMPARE show the same pictures other ways. Pick one; press it again to switch.",
     },
     {
       anchor: "#play", side: "above", title: "Press play",

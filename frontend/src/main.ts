@@ -9,6 +9,7 @@ import { showScene } from "./scenes";
 import { initHelp } from "./help";
 import { initIntro } from "./intro";
 import { walkthrough } from "./walkthrough";
+import { initNav } from "./nav";
 import { CandidatePanel } from "./candidates";
 import { UpdatePanel } from "./updates";
 import * as api from "./api";
@@ -271,6 +272,7 @@ dossierRefresh = wireDossier({
 }).refresh;
 initScenes();
 initShell();
+initNav();
 initHelp();
 initIntro();
 void init();
