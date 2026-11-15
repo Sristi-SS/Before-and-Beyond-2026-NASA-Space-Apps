@@ -476,12 +476,21 @@
           <button type="button" class="dock-close" aria-label="Hide this panel">&rsaquo;</button>
         </div>
         <section>
+          <div class="plain">
+            <h3>In plain English</h3>
+            <p>Earth goes around the Sun once a year, so we watch the sky from a spot that keeps moving.</p>
+            <p>Hold up a finger and blink one eye, then the other: the finger jumps against the wall.
+              Nearby things do the same against the faraway stars, once a year. That sway is called <b>parallax</b>.</p>
+            <p>Many also drift slowly in a straight line. Sway plus drift makes the zigzag in the time cube.
+              The closer something is, the bigger its sway, which is how a cold, dark planet near the Sun could give itself away.</p>
+            <p id="orbit-plain" class="plain-now" aria-live="polite"></p>
+          </div>
           <figure class="inset">
             <canvas id="orbit-inset" width="360" height="360" role="img"
               aria-label="Apparent path on the sky"></canvas>
             <figcaption class="hint small">
-              Apparent position on the sky. <span class="swatch orange"></span> dashed: drift only.
-              <span class="swatch blue"></span> dashed: wobble only. White line: both together. Orange dot: now.
+              Where it appears on the sky. White line: what you would see. <span class="swatch orange"></span> dashed: the drift alone.
+              <span class="swatch blue"></span> dashed: the yearly sway alone. Orange dot: now.
             </figcaption>
           </figure>
           <div class="transport">
@@ -491,52 +500,41 @@
               <input id="orbit-time" type="range" min="0" max="4" step="0.01" value="0" aria-label="Time in years" />
             </label>
           </div>
-          <label class="field">
-            <span>What is it?</span>
-            <select id="orbit-mode">
-              <option value="star">A star (1 to 100 parsecs)</option>
-              <option value="planet">A hypothetical distant planet (100 to 2000 AU)</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Distance</span>
-            <input id="orbit-dist" type="range" min="0" max="1000" step="1" value="500" aria-label="Distance slider" />
-          </label>
-          <div class="row">
-            <label class="field"><span>Exact distance (<span id="orbit-dist-unit">pc</span>)</span>
-              <input id="orbit-dist-num" type="number" step="any" min="1" max="100" value="10" /></label>
-          </div>
-          <label class="field">
-            <span>Proper motion: <b id="orbit-pm-out"></b></span>
-            <input id="orbit-pm" type="range" min="0" max="12" step="0.01" value="0" aria-label="Proper motion in arcseconds per year" />
-          </label>
-          <label class="check">
-            <input id="orbit-detrend" type="checkbox" />
-            <span>Show the wobble only</span>
-          </label>
-          <button id="orbit-use-sim" type="button" class="ghost" hidden>Use the simulator's orbital drift for this distance</button>
-          <p id="orbit-preset-note" class="hint small" role="status"></p>
-          <details class="fold" open>
-            <summary>The numbers</summary>
-            <dl id="orbit-numbers" class="provenance" aria-live="polite"></dl>
-          </details>
           <details class="fold">
-            <summary>In plain English</summary>
+            <summary>Try other objects and see the numbers</summary>
+            <label class="field">
+              <span>What is it?</span>
+              <select id="orbit-mode">
+                <option value="star">A star (1 to 100 parsecs)</option>
+                <option value="planet">A hypothetical distant planet (100 to 2000 AU)</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Distance</span>
+              <input id="orbit-dist" type="range" min="0" max="1000" step="1" value="500" aria-label="Distance slider" />
+            </label>
+            <div class="row">
+              <label class="field"><span>Exact distance (<span id="orbit-dist-unit">pc</span>)</span>
+                <input id="orbit-dist-num" type="number" step="any" min="1" max="100" value="10" /></label>
+            </div>
+            <label class="field">
+              <span>Proper motion: <b id="orbit-pm-out"></b></span>
+              <input id="orbit-pm" type="range" min="0" max="12" step="0.01" value="0" aria-label="Proper motion in arcseconds per year" />
+            </label>
+            <label class="check">
+              <input id="orbit-detrend" type="checkbox" />
+              <span>Show the wobble only</span>
+            </label>
+            <button id="orbit-use-sim" type="button" class="ghost" hidden>Use the simulator's orbital drift for this distance</button>
+            <p id="orbit-preset-note" class="hint small" role="status"></p>
+            <h3>The numbers</h3>
+            <dl id="orbit-numbers" class="provenance" aria-live="polite"></dl>
             <p class="hint">
-              Earth circles the Sun once a year, so we look at the sky from a point that keeps changing.
-              A nearby object is seen against a slightly different part of the faraway background each season:
-              that shift is <b>parallax</b>, a yearly wobble. On top of it, the object may drift in a straight line
-              (<b>proper motion</b>). Wobble plus drift is the zigzag you see in the time cube.
-            </p>
-            <p class="hint">
-              Hold a finger at arm's length and blink one eye, then the other: the finger jumps against the wall.
-              Earth does the same thing from one side of its orbit to the other, six months apart.
-              The nearer the object, the bigger the jump: parallax in arcseconds is 1 divided by the distance in
-              parsecs, so a star 1.83 parsecs away swings by about half an arcsecond, and something 500 AU away
-              swings by about 413 arcseconds (roughly 67 SPHEREx pixels). Because the jump shrinks with distance,
-              a very distant object barely wobbles at all. Its own orbital drift shrinks too, but more slowly
-              than you might expect (as 1 over distance to the power 1.5, in the simulator's model), so a planet a few
-              hundred AU away is dominated by parallax and the tilt must follow that wobble, not a straight line.
+              Parallax in arcseconds is 1 divided by the distance in parsecs, so a star 1.83 parsecs away swings by about
+              half an arcsecond, and something 500 AU away swings by about 413 arcseconds (roughly 67 SPHEREx pixels).
+              A very distant object barely wobbles at all. Its own orbital drift shrinks too, but more slowly
+              (as 1 over distance to the power 1.5, in the simulator's model), so a planet a few hundred AU away is
+              dominated by parallax and the tilt must follow that wobble, not a straight line.
             </p>
           </details>
           <div class="row wrap">

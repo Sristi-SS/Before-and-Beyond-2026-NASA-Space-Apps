@@ -170,5 +170,13 @@ button > .help-dot { background: #000; }
 /* The cube's colour ramp (first epoch to last) runs through white, as drawn. */
 .swatch.ramp { background: linear-gradient(90deg, var(--azure), #fff, var(--amber)); }
 
+/* "Why it moves": the plain-English card comes first; the controls and numbers fold away below it. */
+.plain { display: grid; gap: 0.55rem; padding: 0.8rem 0.9rem; border: 2px solid var(--hair); border-radius: 6px; background: rgba(47, 91, 255, 0.06); }
+.plain h3, .scene-side details h3 { font: 9px/1.6 var(--pixel); color: var(--title); text-shadow: 1px 1px 0 var(--title-shadow); text-transform: uppercase; margin: 0; }
+.plain p { font-size: 0.9rem; line-height: 1.55; color: var(--ink); }
+.plain-now { padding-top: 0.55rem; border-top: 2px dotted var(--hair); color: var(--glow) !important; font-weight: 600; }
+.plain-now:empty { display: none; }
+.inset figcaption { font-family: var(--sans); font-size: 0.78rem; line-height: 1.5; color: var(--ink-2); }
+
 /* Projection mode keeps its own high-contrast walls. */
 body.projection .panel, body.projection .deck { border: 4px double #fff; }

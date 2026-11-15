@@ -97,6 +97,7 @@ export class OrbitView {
     far: THREE.Line;
     trail: THREE.Line;
     earthLabel: THREE.Sprite;
+    sunLabel: THREE.Sprite;
     objLabel: THREE.Sprite;
     bgLabel: THREE.Sprite;
     observer: ResizeObserver;
@@ -117,6 +118,8 @@ export class OrbitView {
   private readonly simBtn = q<HTMLButtonElement>("orbit-use-sim");
   private readonly numbers = q<HTMLElement>("orbit-numbers");
   private readonly presetNote = q<HTMLElement>("orbit-preset-note");
+  /** The one plain-English sentence about what is set up right now. */
+  private readonly plainNow = q<HTMLElement>("orbit-plain");
   private readonly noGl = q<HTMLElement>("orbit-nogl");
 
   constructor(private readonly reducedMotion: boolean) {
@@ -289,6 +292,7 @@ export class OrbitView {
       const m = distantPlanetMotion(this.d);
       rows.push(["Simulator's orbital drift", `206265 × 2π / d¹·⁵ = ${fmt(m.vy, 1)} arcsec/yr`]);
     }
+    this.plainNow.textContent = this.plainSentence(p / px, this.pm / px);
     this.numbers.replaceChildren();
     for (const [k, v] of rows) {
       const dt = document.createElement("dt");
@@ -303,6 +307,20 @@ export class OrbitView {
       `${lead}apparent path on the sky over 4 years. Parallax ${fmt(p)} arcsec, ${fmt(p / px)} SPHEREx pixels; ` +
         `proper motion ${fmt(this.pm, 2)} arcsec per year.`,
     );
+  }
+
+  /** "Right now: ..." in everyday words: how far, and how much it sways and drifts in SPHEREx pixels. */
+  private plainSentence(swayPx: number, driftPx: number): string {
+    const amount = (n: number, unit: string): string =>
+      n < 0.05 ? `far less than one ${unit}` : n < 1 ? `about ${n.toFixed(1)} of a ${unit}` : `about ${fmt(n, 1)} ${unit}s`;
+    const sway = `it sways ${amount(2 * swayPx, "SPHEREx pixel")} back and forth`;
+    const drift = driftPx > 0 ? ` and drifts ${amount(driftPx, "pixel")} along its path` : "";
+    if (this.mode === "star") {
+      const who = this.preset ? this.preset.name : "this star";
+      const ly = this.d * 3.2616;
+      return `Right now: ${who} is about ${fmt(ly, ly < 10 ? 1 : 0)} light-years away. Each year ${sway}${drift}.`;
+    }
+    return `Right now: a planet ${fmt(this.d, 0)} times farther from the Sun than Earth. Each year ${sway}${drift}: easy to catch.`;
   }
 
   // -- 3D scene --------------------------------------------------------------
@@ -322,16 +340,16 @@ export class OrbitView {
     controls.minDistance = 2;
     camera.lookAt(controls.target);
 
-    const sun = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffe9b0 }));
+    const sun = new THREE.Mesh(new THREE.SphereGeometry(0.16, 24, 16), new THREE.MeshBasicMaterial({ color: 0xffd23f }));
     const ring = new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(
         Array.from({ length: 129 }, (_, i) => new THREE.Vector3(Math.cos((i / 128) * 2 * Math.PI), 0, Math.sin((i / 128) * 2 * Math.PI))),
       ),
-      new THREE.LineBasicMaterial({ color: 0x4aa3df, transparent: true, opacity: 0.7 }),
+      new THREE.LineBasicMaterial({ color: 0x58b4ff, transparent: true, opacity: 0.7 }),
     );
-    const earth = new THREE.Mesh(new THREE.SphereGeometry(0.075, 20, 14), new THREE.MeshBasicMaterial({ color: 0x4aa3df }));
-    const object = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), new THREE.MeshBasicMaterial({ color: 0xf08a3c }));
-    const hit = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xf08a3c }));
+    const earth = new THREE.Mesh(new THREE.SphereGeometry(0.075, 20, 14), new THREE.MeshBasicMaterial({ color: 0x58b4ff }));
+    const object = new THREE.Mesh(new THREE.OctahedronGeometry(0.14), new THREE.MeshBasicMaterial({ color: 0xffa24a }));
+    const hit = new THREE.Mesh(new THREE.OctahedronGeometry(0.16), new THREE.MeshBasicMaterial({ color: 0xffa24a }));
 
     // Background: decorative points on a far sphere (not catalogue data).
     const pts: number[] = [];
@@ -349,20 +367,21 @@ export class OrbitView {
     }
     const bg = new THREE.Points(
       new THREE.BufferGeometry().setAttribute("position", new THREE.Float32BufferAttribute(pts, 3)),
-      new THREE.PointsMaterial({ color: 0xaec4d8, size: 0.07, transparent: true, opacity: 0.8 }),
+      new THREE.PointsMaterial({ color: 0xbcc4dc, size: 0.07, transparent: true, opacity: 0.8 }),
     );
 
     const lineGeo = () => new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
-    const near = new THREE.Line(lineGeo(), new THREE.LineBasicMaterial({ color: 0x4aa3df }));
-    const far = new THREE.Line(lineGeo(), new THREE.LineBasicMaterial({ color: 0x4aa3df, transparent: true, opacity: 0.45 }));
-    const trail = new THREE.Line(lineGeo(), new THREE.LineBasicMaterial({ color: 0xf08a3c, transparent: true, opacity: 0.85 }));
+    const near = new THREE.Line(lineGeo(), new THREE.LineBasicMaterial({ color: 0x58b4ff }));
+    const far = new THREE.Line(lineGeo(), new THREE.LineBasicMaterial({ color: 0x58b4ff, transparent: true, opacity: 0.45 }));
+    const trail = new THREE.Line(lineGeo(), new THREE.LineBasicMaterial({ color: 0xffa24a, transparent: true, opacity: 0.85 }));
 
-    const sunLabel = textSprite("Sun", { height: 0.55, screen: false, color: "#ffe9b0" });
-    sunLabel.position.set(0, -0.6, 0);
-    const earthLabel = textSprite("Earth", { height: 0.55, screen: false, color: "#8cc6ee" });
-    const objLabel = textSprite("nearby object", { height: 0.55, screen: false, color: "#ffc596" });
-    const bgLabel = textSprite("distant background (far beyond)", { height: 0.7, screen: false, color: "#aec4d8" });
-    bgLabel.position.set(0, -2.6, -8.5);
+    // Pixel-font labels in the theme's colours, like the rest of the site.
+    const sunLabel = textSprite("SUN", { height: 0.5, screen: false, color: "#ffd23f", font: "pixel" });
+    // Placed every frame (placeSunEarthLabels): EARTH on the side of Earth away from the Sun, SUN on the other side.
+    const earthLabel = textSprite("EARTH", { height: 0.5, screen: false, color: "#58b4ff", font: "pixel" });
+    const objLabel = textSprite("NEARBY OBJECT", { height: 0.5, screen: false, color: "#ffa24a", font: "pixel" });
+    const bgLabel = textSprite("FAR-AWAY STARS", { height: 0.6, screen: false, color: "#bcc4dc", font: "pixel" });
+    bgLabel.position.set(-3.2, 5.2, -8.2);
 
     scene.add(sun, ring, earth, object, hit, bg, near, far, trail, sunLabel, earthLabel, objLabel, bgLabel);
 
@@ -374,7 +393,7 @@ export class OrbitView {
       camera.updateProjectionMatrix();
     });
     observer.observe(this.view);
-    return { renderer, scene, camera, controls, earth, object, hit, near, far, trail, earthLabel, objLabel, bgLabel, observer };
+    return { renderer, scene, camera, controls, earth, object, hit, near, far, trail, earthLabel, sunLabel, objLabel, bgLabel, observer };
   }
 
   /** Visual (not to scale) distance of the example object from the Sun. */
@@ -410,13 +429,31 @@ export class OrbitView {
     this.gl.objLabel.position.copy(this.objectPos()).add(new THREE.Vector3(0.9, 0.35, 0));
   }
 
+  /** Keep EARTH and SUN apart on screen: each label sits on the side facing away from the other body. */
+  private placeSunEarthLabels(): void {
+    const g = this.gl;
+    if (!g) return;
+    const w = Math.max(1, this.view.clientWidth);
+    const h = Math.max(1, this.view.clientHeight);
+    const s = new THREE.Vector3(0, 0, 0).project(g.camera);
+    const e = g.earth.position.clone().project(g.camera);
+    let ux = (e.x - s.x) * w;
+    let uy = (e.y - s.y) * h;
+    const len = Math.hypot(ux, uy) || 1;
+    ux /= len;
+    uy /= len;
+    // A sprite's center is its anchor point in its own box: shifting it moves the text off the body.
+    g.earthLabel.center.set(0.5 - 0.62 * ux, 0.5 - 1.25 * uy);
+    g.sunLabel.center.set(0.5 + 0.8 * ux, 0.5 + 1.6 * uy);
+  }
+
   private update3d(): void {
     const g = this.gl;
     if (!g) return;
     const th = 2 * Math.PI * this.t;
     const e = new THREE.Vector3(Math.cos(th), 0, Math.sin(th));
     g.earth.position.copy(e);
-    g.earthLabel.position.set(e.x + 0.6, 0.45, e.z + 0.3);
+    g.earthLabel.position.copy(e);
     const o = this.objectPos();
     const h = this.backgroundHit(this.t);
     g.hit.position.copy(h);
@@ -433,7 +470,7 @@ export class OrbitView {
     const W = c.width;
     const H = c.height;
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#0b121a";
+    ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, W, H);
     const detrend = this.detrend.checked;
     const N = 160;
@@ -482,21 +519,21 @@ export class OrbitView {
       ctx.setLineDash([]);
     };
     if (!detrend) {
-      poly(wobble, "rgba(74,163,223,0.55)", 1.5, [4, 4]);
-      poly(straight, "rgba(240,138,60,0.8)", 1.5, [8, 4]);
+      poly(wobble, "rgba(88,180,255,0.6)", 1.5, [4, 4]);
+      poly(straight, "rgba(255,162,74,0.85)", 1.5, [8, 4]);
     } else {
-      poly(wobble, "rgba(74,163,223,0.35)", 1, [4, 4]);
+      poly(wobble, "rgba(88,180,255,0.4)", 1, [4, 4]);
     }
-    poly(full, "#dbe8f3", 2.2, []);
+    poly(full, "#ffffff", 2.2, []);
 
     // start and current positions
     const [x0p, y0p] = this.offset(0, !detrend);
-    ctx.fillStyle = "#91a3b4";
+    ctx.fillStyle = "#8a94b4";
     ctx.beginPath();
     ctx.arc(sx(x0p), sy(y0p), 3.5, 0, 7);
     ctx.fill();
     const [xt, yt] = this.offset(this.t, !detrend);
-    ctx.fillStyle = "#f08a3c";
+    ctx.fillStyle = "#ffa24a";
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -505,13 +542,13 @@ export class OrbitView {
     ctx.stroke();
 
     // compass and scale
-    ctx.fillStyle = "#c5d4e0";
-    ctx.font = "600 14px 'Segoe UI', system-ui, sans-serif";
-    ctx.fillText("N up", W - 48, 20);
-    ctx.fillText("E left", 10, 20);
+    ctx.fillStyle = "#ffd23f";
+    ctx.font = `10px "Press Start 2P", monospace`;
+    ctx.fillText("N UP", W - 52, 22);
+    ctx.fillText("E LEFT", 10, 22);
     const bar = SPHEREX_PIXEL_ARCSEC * scale;
-    ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
-    ctx.fillStyle = "#c5d4e0";
+    ctx.font = `500 13px "Bricolage Grotesque Variable", system-ui, sans-serif`;
+    ctx.fillStyle = "#bcc4dc";
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2;
     const label = `1 SPHEREx pixel = ${SPHEREX_PIXEL_ARCSEC}″`;
@@ -554,6 +591,7 @@ export class OrbitView {
     if (g && this.view.clientWidth > 0) {
       this.update3d();
       g.controls.update();
+      this.placeSunEarthLabels();
       g.renderer.render(g.scene, g.camera);
     }
   };
