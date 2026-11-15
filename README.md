@@ -27,6 +27,8 @@ The NASA Space Apps **Planet X and SPHEREx** challenge asks for a public tool th
 
 ---
 ## Data sources and Scientific Processing
+
+### How a cube is made
  1. **Resolve the position.** The five challenge targets come from a built-in
    table (values read from CDS Sesame/SIMBAD on 2026-11-13), so they need no
    network. Other names go through CDS Sesame. All are treated as J2000
@@ -66,8 +68,9 @@ The NASA Space Apps **Planet X and SPHEREx** challenge asks for a public tool th
    velocity by 1.5 arcsec/yr on the Barnard's Star test cube. The score is the
    peak of the smoothed, flux-averaged stack.
 
-Orientation: the grid is north-up with a negative RA step, so east is −x and
+*Orientation: the grid is north-up with a negative RA step, so east is −x and
 north is +y. A positive `vx` therefore moves a source toward smaller x.
+
 ---
 ## Installation (Windows, Python 3.14, Node 22)
 
@@ -109,50 +112,6 @@ python -m pytest backend\tests -q -k real_frames          :: 4 to 12 min, needs 
 ```
 
 ---
-## How a cube is made
-
-1. **Resolve the position.** The five challenge targets come from a built-in
-   table (values read from CDS Sesame/SIMBAD on 2026-11-13), so they need no
-   network. Other names go through CDS Sesame. All are treated as J2000
-   coordinates with a proper motion.
-   Named cubes are centred on the position **propagated to 2026.5**, the middle
-   of the SPHEREx survey; otherwise Barnard's Star sits about 4.5 arcmin off-centre (26 yr x 10.36 arcsec/yr = 269 arcsec).
-   Explicit coordinates are used exactly as entered.
-2. **Search the archive.** A TAP `ADQL` cone search on `spherex.obscore`
-   One row is returned per detector plane. The search returns planes from
-   every collection (`spherex_dr1`, `spherex_qr3`, `spherex_dr1_deep`); the
-   cached cubes mix them. When two collections hold the same exposure, only
-   one copy is kept (`spherex_dr1` first). Each frame records its collection.
-3. **Fetch cut-outs.** IRSA IBE cut-outs (`?center=RA,DEC&size=DEG`) give the
-   `IMAGE`, `FLAGS`, `VARIANCE` and `ZODI` layers plus a celestial WCS and a
-   `WAVE-TAB` WCS. If IBE cannot serve a plane, the DataLink link is used as a
-   fallback. Raw FITS files are cached under `data/cache/raw/`.
-4. **Align.** Every image is reprojected onto one north-up TAN grid
-   (default 128 × 128 px at 6.15 arcsec/px, so the grid is 787 arcsec = 0.22 deg wide).
-   Native SPHEREx pixels are 6.15 arcsec; the tool never upsamples by more than 2×.
-   The "field of view" choice only sets the size of the cut-out requested from the
-   archive (never smaller than the grid needs); it does not resize the grid.
-5. **Clean.** The ZODI layer and a robust median background are subtracted.
-   `FLAGS` is masked except bit 21 (`SOURCE`, "pixel mapped to a known source")
-   and bit 12 (`FULLSAMPLE`); every other bit is treated as contamination. The
-   bit names come from the `MSKNnnnn` keywords in the FLAGS header. Masked
-   pixels inside the detector outline (saturated star cores, bad pixels) are
-   filled by interpolation from their neighbours, so a bright star is not a
-   black hole; do not measure fluxes there. The masked fraction and coverage
-   are stored per frame and shown in the UI.
-6. **Group.** Frames are clustered into passes by a 60-day gap, then split by
-   detector (the six wavelength groups). Frames in the same pass and detector
-   are averaged into one slice for the pass-averaged cube; the 3D view uses the
-   individual aligned epochs so the real cadence is visible.
-7. **Tilt.** For a trial velocity `(vx, vy)` in arcsec/yr, each frame is shifted
-   by `v · Δt / pixel scale` and summed. Cubic interpolation (`ndimage.shift`,
-   order 3) is used because bilinear interpolation biased the recovered
-   velocity by 1.5 arcsec/yr on the Barnard's Star test cube. The score is the
-   peak of the smoothed, flux-averaged stack.
-
-Orientation: the grid is north-up with a negative RA step, so east is −x and
-north is +y. A positive `vx` therefore moves a source toward smaller x.
-
 ### Detector wavelength groups
 
 | Group | Nominal range (µm) | Typical λ in the cube |
