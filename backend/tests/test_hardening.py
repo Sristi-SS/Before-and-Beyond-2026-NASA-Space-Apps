@@ -23,6 +23,7 @@ def test_device_without_token_must_be_local(monkeypatch):
     monkeypatch.setenv("SPHEREX_HW_TOKEN", "s3cret")
     assert not hardware._token_ok(None, "device", "127.0.0.1")
     assert hardware._token_ok("s3cret", "device", "8.8.8.8")
+    assert hardware._token_ok(None, "browser", "8.8.8.8")      # the website needs no secret
 
 
 def test_public_device_is_refused_behind_a_proxy(monkeypatch):

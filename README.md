@@ -702,7 +702,7 @@ Added 2026-11-14.
 
 ## Safety limits (hardening)
 
-- **Hardware socket (`/ws/hardware`).** With `SPHEREX_HW_TOKEN` set, every connection needs the token.
+- **Hardware socket (`/ws/hardware`).** With `SPHEREX_HW_TOKEN` set, every device needs the token (the website does not).
   With no token, a device is accepted only from the same machine or the local network.
   A web page from another site cannot open the socket (the `Origin` must match the site).
   Each socket may send 60 messages per second; a message may be 1024 bytes; 16 sockets at most.

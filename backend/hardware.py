@@ -9,7 +9,7 @@ Schema: hardware/EVENTS.md.  The site works fully with no hardware connected.
 
 Who may connect:
 * With a shared token set (env SPHEREX_HW_TOKEN, sent as ``?token=...``), every
-  connection needs it.
+  device needs it.
 * With no token set, a device is accepted only from the same machine or the local
   network, so a public server never takes hardware events from strangers.
 * A browser page must come from this site (its Origin must match the Host), from
@@ -130,11 +130,14 @@ def _is_local(host: str) -> bool:
 
 
 def _token_ok(given: Optional[str], role: str = "browser", host: str = "localhost") -> bool:
+    # Only a device can drive the exhibit, so only a device needs the secret.  A browser page
+    # is checked by its Origin instead; it has no safe place to keep a secret.
+    if role != "device":
+        return True
     expected = os.environ.get("SPHEREX_HW_TOKEN", "")
     if expected:
         return hmac.compare_digest((given or "").encode(), expected.encode())
-    # No token configured: browsers may listen, devices must be on the local network.
-    return role != "device" or _is_local(host)
+    return _is_local(host)              # no token configured: local network only
 
 
 def _origin_ok(ws: WebSocket) -> bool:
