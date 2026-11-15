@@ -14,66 +14,62 @@ The NASA Space Apps **Planet X and SPHEREx** challenge asks for a public tool th
 
 **Scope:** The app analyzes selected sky patches; it does not display the full sky or all 102 bands for every target. WISE observations are supplementary and labeled separately. Results are candidates for follow-up, not confirmed discoveries.
 
-## Features 
-
-
-## Status
-
-Checked on 2026-11-14 (local machine, Windows, Python 3.14). "Tested in browser" means clicked
-through in the in-app browser on a local server with the console watched; "unit test only" means
-the automated tests are the only check; "untested" means never run.
-
-| Feature | State |
-| --- | --- |
-| Archive search, cut-outs, alignment (SPHEREx) | Tested in browser (five targets) and by unit test |
-| Time cube page: play/pause, group picker, blink, 3D cube | Tested in browser (five targets, no console errors) |
-| Shift-and-stack ("tilt"), "Remove fixed stars", "Use catalogue motion" | Tested in browser; planted-source recovery by unit test and a real-frame test |
-| Motion map, colour view | Tested in browser (WISE 0855) |
-| Compare epochs (side/swipe/fade/difference, "jump to largest change") | Tested in browser (WISE 0855) |
-| Pixel spectrum, pulse view, evidence checklist | Tested in browser (Epsilon Indi B, RW Aurigae, WISE 0855) |
-| Simulator test mode and banner | Tested in browser (banner on and off); the "hide a planet" game was run once by hand earlier |
-| WISE baseline (unWISE W1/W2, 2010-2024) | Tested in browser and live on the archive |
-| Gaia labels | Tested in browser and live (ESA TAP); the VizieR fallback is untested |
-| Sky globe, orbit view, guided tour | Tested in browser |
-| Shareable URL state | Tested in browser (a reload restores view, group, velocity, slice, pixel, panel) |
-| Phone width (375 px), keyboard focus order | Tested in browser |
-| Kiosk (`?kiosk=1`) and projection (`?projection=1`) flags | Tested in browser: both load with no errors; the 3-minute kiosk reset and projection auto-play were not waited for |
-| Status badge (`/api/status`) | Tested in browser ("online" and "data cached"; "offline demo" untested) |
-| New-position build from the form | Tested live (RA 150.0, Dec +2.2, field 0.1 deg, 19 frames: completed, 64 frames with WISE) |
-| Name lookup through CDS Sesame | Tested live (Proxima Centauri resolved); the five challenge targets are built in |
-| Hipparcos bright stars from VizieR | Untested: VizieR TAP timed out from this machine, so the 25-star fallback list is what ran |
-| Exports (movie WebM 160 KB, tilt snap WebM 277 KB, PNG images) and candidate dossier | Tested in browser (WISE 0855, group 102; blob sizes read through a hook, nothing saved; simulator-on: tilt PNG, tilt snap and movie fillText hooked, all burn in "SIMULATED OBJECT — not real data" and SIMULATED- filenames, dossier button disabled; simulator-off: captions say real archive data, motion-map PNG 34 KB; dossier built with DOM APIs, no innerHTML on data; @media print rule hides all body children except #dossier, checked by rule not by printing; simulator-on motion-map PNG shares the tilt PNG code path, not separately clicked) |
-| Rate limit, gzip, status API | Unit test only |
-| Hardware bridge (`/ws/hardware`, `simulate_device.py`) | Unit test only (validation and a two-client relay) |
-| ESP32 sketch `hardware/esp32_bridge` | Untested (never compiled or run on a board) |
-| Dockerfile and `docs/DEPLOY.md` (Docker, free-tier host, Jetson) | Untested (Docker not installed; nothing deployed) |
-| New look ("Cold light" theme: full-window 3D views, floating glass panels with tabs, Focus mode, question-mark tips) | Tested in browser at 1440 px and 375 px: three scenes, five views, every tab, the guided tour (all five steps reach a visible control) |
-| Candidate search (ranked movers, motion path, predicted position in every image) | Tested in browser on WISE 0855, WISE W2: candidate 1 is (-8.0 E, +1.0 N) arcsec/yr, score 58.4, shape 0.99 (catalogue motion: -8.12, +0.67); also by unit test with a synthetic mover |
-| Patch model (`backend/ranker.py`, 997 numbers) | Unit test only. Trained on simulated patches only; a ranking hint, not evidence |
-| New-image check and "Update cube" (`backend/refresh.py`) | Unit test only, with the archive mocked. The live check did not run: the IRSA TAP service answered 502 on 2026-11-14. The "archive does not answer" message was tested in browser |
-| Pixhawk reader `hardware/pixhawk_reader.py` | Stick mapping by unit test; `--simulate` ran against the local server. The MAVLink link to a real Pixhawk is untested |
-| Sharp 3D cube (light-only images, blue-to-orange by order, white frame on the current image) | Tested in browser (WISE 0855, WISE W2, 23 images; play, turn) |
-| One-minute auto demo, "Open the fastest mover" button | Tested in browser: steps 1 to 3 ran by themselves from the landing page; steps 4 and 5 use the same timer and were not waited for |
-| Sound (one tone per image), Share link, keyboard shortcuts | Tested in browser: toggle state, arrow keys, digit keys and Space. The tones were not listened to (no audio device in the test) and the clipboard write was not checked |
-
-Milestones: M0-M4 are done (archive access, alignment, 3D cube, shift-and-stack, planted-source
-test, five-target cache). M5 (candidate evidence) is covered by the Gaia overlay, the
-catalogue-motion button and the evidence checklist; a multi-band candidate table does not exist.
-M6 (motion map and colour view) is done. The compare, colour and map views are built, not stubs.
-
-The 3D scene is explanatory only. The science score always comes from an exact
-2-D shift-and-sum of the FITS-derived arrays, not from moving a camera.
+## Overview
 
 ---
+## Features
 
-## Exports and dossier
+---
+## Technology Stack
 
-- **Save movie** (next to Play) records the frames of the current group, or the 16-year movie, as a 512x512 WebM with a burned-in caption (target, source, date, wavelength); without MediaRecorder it saves a PNG contact strip. **Save image** saves the tilt result or motion map as PNG with a caption ending in "candidate only".
-- **Tilt snap clip** exports a 41-step WebM of the stack going from v = 0 to the current velocity (computed in the browser) for the demo video.
-- **Candidate dossier** (under the evidence checklist) opens a printable section with target, link, velocity, score, checklist, both images, spectrum table, provenance and the standing candidate-only text; it has Print / save as PDF and Copy link, and is disabled while the simulator is on.
-- Every export carries "SPHEREx Time Cube — real archive data", or "SIMULATED OBJECT — not real data" when the simulator is on.
+---
+## System Architecture 
 
-## Quick start (Windows, Python 3.14, Node 22)
+---
+## Data sources and Scientific Processing
+ 1. **Resolve the position.** The five challenge targets come from a built-in
+   table (values read from CDS Sesame/SIMBAD on 2026-11-13), so they need no
+   network. Other names go through CDS Sesame. All are treated as J2000
+   coordinates with a proper motion.
+   Named cubes are centred on the position **propagated to 2026.5**, the middle
+   of the SPHEREx survey; otherwise Barnard's Star sits about 4.5 arcmin off-centre (26 yr x 10.36 arcsec/yr = 269 arcsec).
+   Explicit coordinates are used exactly as entered.
+2. **Search the archive.** A TAP `ADQL` cone search on `spherex.obscore`
+   One row is returned per detector plane. The search returns planes from
+   every collection (`spherex_dr1`, `spherex_qr3`, `spherex_dr1_deep`); the
+   cached cubes mix them. When two collections hold the same exposure, only
+   one copy is kept (`spherex_dr1` first). Each frame records its collection.
+3. **Fetch cut-outs.** IRSA IBE cut-outs (`?center=RA,DEC&size=DEG`) give the
+   `IMAGE`, `FLAGS`, `VARIANCE` and `ZODI` layers plus a celestial WCS and a
+   `WAVE-TAB` WCS. If IBE cannot serve a plane, the DataLink link is used as a
+   fallback. Raw FITS files are cached under `data/cache/raw/`.
+4. **Align.** Every image is reprojected onto one north-up TAN grid
+   (default 128 × 128 px at 6.15 arcsec/px, so the grid is 787 arcsec = 0.22 deg wide).
+   Native SPHEREx pixels are 6.15 arcsec; the tool never upsamples by more than 2×.
+   The "field of view" choice only sets the size of the cut-out requested from the
+   archive (never smaller than the grid needs); it does not resize the grid.
+5. **Clean.** The ZODI layer and a robust median background are subtracted.
+   `FLAGS` is masked except bit 21 (`SOURCE`, "pixel mapped to a known source")
+   and bit 12 (`FULLSAMPLE`); every other bit is treated as contamination. The
+   bit names come from the `MSKNnnnn` keywords in the FLAGS header. Masked
+   pixels inside the detector outline (saturated star cores, bad pixels) are
+   filled by interpolation from their neighbours, so a bright star is not a
+   black hole; do not measure fluxes there. The masked fraction and coverage
+   are stored per frame and shown in the UI.
+6. **Group.** Frames are clustered into passes by a 60-day gap, then split by
+   detector (the six wavelength groups). Frames in the same pass and detector
+   are averaged into one slice for the pass-averaged cube; the 3D view uses the
+   individual aligned epochs so the real cadence is visible.
+7. **Tilt.** For a trial velocity `(vx, vy)` in arcsec/yr, each frame is shifted
+   by `v · Δt / pixel scale` and summed. Cubic interpolation (`ndimage.shift`,
+   order 3) is used because bilinear interpolation biased the recovered
+   velocity by 1.5 arcsec/yr on the Barnard's Star test cube. The score is the
+   peak of the smoothed, flux-averaged stack.
+
+Orientation: the grid is north-up with a negative RA step, so east is −x and
+north is +y. A positive `vx` therefore moves a source toward smaller x.
+---
+## Installation (Windows, Python 3.14, Node 22)
 
 ```bat
 python -m venv .venv
@@ -113,7 +109,6 @@ python -m pytest backend\tests -q -k real_frames          :: 4 to 12 min, needs 
 ```
 
 ---
-
 ## How a cube is made
 
 1. **Resolve the position.** The five challenge targets come from a built-in
