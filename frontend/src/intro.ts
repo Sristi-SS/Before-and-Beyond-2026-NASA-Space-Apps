@@ -30,8 +30,9 @@ const reduced = (): boolean => !!window.matchMedia?.("(prefers-reduced-motion: r
 function wanted(): boolean {
   const params = new URLSearchParams(LANDING_SEARCH);
   if (params.get("intro") === "1") return true;
-  // Any other parameter is a shared link to something specific: go straight there.
-  if ([...params.keys()].length > 0) return false;
+  // Unattended screens (kiosk, projector, hardware) never get it.  Everyone else sees it on a first visit,
+  // whatever the address says: the site itself writes ?scene=... into the address bar.
+  if (["kiosk", "projection", "hw"].some((k) => params.has(k))) return false;
   try {
     return window.localStorage.getItem(SEEN_KEY) !== "1";
   } catch {

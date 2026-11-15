@@ -8,7 +8,7 @@ import { flushState } from "./state";
 import { showScene } from "./scenes";
 import { initHelp } from "./help";
 import { initIntro } from "./intro";
-import { showBubble } from "./bubble";
+import { walkthrough } from "./walkthrough";
 import { CandidatePanel } from "./candidates";
 import { UpdatePanel } from "./updates";
 import * as api from "./api";
@@ -273,25 +273,8 @@ initScenes();
 initShell();
 initHelp();
 initIntro();
-presetBubbleOnGlobe();
 void init();
 
-/** On the globe, point out that Barnard's Star is a preset (once per browser, after the intro if it is showing). */
-function presetBubbleOnGlobe(): void {
-  const show = (): void => {
-    const start = document.querySelector<HTMLElement>(".hero [data-intro-start]");
-    if (document.body.dataset.scene !== "globe" || !start) return;
-    showBubble({
-      anchor: start, side: "right", once: "bubble-preset-globe", title: "Preset!",
-      text: "Barnard's Star is a preset: its images are saved, so it opens instantly. Every cube under \u201cCubes already built\u201d is saved too.",
-    });
-  };
-  if (document.body.classList.contains("intro-open")) {
-    window.addEventListener("intro:closed", () => window.setTimeout(show, 400), { once: true });
-  } else {
-    window.setTimeout(show, 1200);
-  }
-}
 
 async function init(): Promise<void> {
   initStatusBadge();
@@ -456,7 +439,16 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
   contactLink.hidden = false;
 
   const known = status.groups.map((g) => g.detector);
-  if (!known.includes(group)) {
+  // A fast mover with WISE and SPHEREx frames opens on the 16-year movie, where it visibly walks across the
+  // picture (Barnard's Star: about 27 pixels).  One year of SPHEREx alone moves it under 2 pixels.
+  const pmTotal = Math.hypot(status.target?.pmra_mas_yr ?? 0, status.target?.pmdec_mas_yr ?? 0);
+  const movieFrames = known.includes(DET_W2)
+    ? selectMovieFrames(status.frames.map((meta) => ({ meta })), DET_W2).length
+    : 0;
+  if (!hydrate && pmTotal >= 500 && movieFrames >= 4) {
+    group = DET_W2;
+    movie = true;
+  } else if (!known.includes(group)) {
     // WISE 0855 is the demo target: open it on WISE W2, where it moves visibly.
     // Otherwise default to the SPHEREx group with the most epochs, not simply D1.
     const isDemo = /wise\s*0855/i.test(status.target?.name ?? "");
@@ -485,12 +477,7 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
   await loadGroup(group, hydrate ? state.t : 0, hydrate);
   candidatePanel.reset();
   if (hydrate && (state.vx !== 0 || state.vy !== 0)) void runTilt();
-  if (/barnard/i.test(status.target?.name ?? "") && !useCatalogue.disabled) {
-    window.setTimeout(() => showBubble({
-      anchor: useCatalogue, side: "below", once: "bubble-preset-cube", title: "Preset loaded!",
-      text: "Barnard's Star's motion is already known. Press Catalogue motion to stack the images along its path and watch the star sharpen.",
-    }), 800);
-  }
+  walkthrough(viewInput.value);
 }
 
 /** Click-for-spectrum: measure every frame at this pixel and open the panel. */
@@ -804,6 +791,7 @@ viewInput.addEventListener("change", () => {
 function applyViewMode(): void {
   const view = viewInput.value as View;
   syncView();
+  if (frameSlices.length > 0) walkthrough(view);
   window.requestAnimationFrame(() => {
     pickers.forEach((p) => p.refresh());
     candidatePanel.frameChanged();
@@ -822,13 +810,10 @@ function applyViewMode(): void {
     } else {
       compareView.render();
     }
-  } else if (view === "colour" && (movie || group === 0)) {
-    colourCanvas.hidden = true;
-    colourNote.hidden = true;
-    showStub("Colour view", "It compares epochs of one band. Pick a single wavelength group, not All bands or the 16-year movie: SPHEREx and WISE units differ.");
   } else if (view === "colour") {
     const frames = frameSlices.map((f) => ({ mjd: f.meta.mjd, data: f.data }));
-    if (!drawColourComposite(frames, cubeNpix, colourCanvas)) {
+    // Mixed units (the movie, All bands): each frame is scaled on its own before the blend.
+    if (!drawColourComposite(frames, cubeNpix, colourCanvas, movie || group === 0)) {
       colourCanvas.hidden = true;
       colourNote.hidden = true;
       showStub("Colour view", "It needs at least two epochs with different dates in this group.");

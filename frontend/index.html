@@ -31,10 +31,10 @@
       <div class="topbar-meta">
         <span id="status-badge" class="badge" role="status" data-kind="online">checking&hellip;</span>
         <span id="hw-indicator" class="badge" role="status" hidden></span>
-        <button id="tour-start" type="button" class="ghost">Tour</button>
+        <button id="tour-start" type="button" class="ghost" hidden>Tour</button>
         <button id="share-link" type="button" class="ghost">Share</button>
         <button id="help-toggle" type="button" class="ghost round" aria-pressed="true" aria-label="Show or hide the question-mark tips">?</button>
-        <button id="focus-toggle" type="button" class="ghost" aria-pressed="false">Focus</button>
+        <button id="focus-toggle" type="button" class="ghost" aria-pressed="false" hidden>Focus</button>
         <button id="fullscreen-demo" type="button" class="ghost">Projector</button>
       </div>
     </header>
@@ -48,10 +48,8 @@
         <canvas id="colour-canvas" class="blink-canvas colour-canvas" width="128" height="128" hidden
           role="img" aria-label="Colour composite: early epochs in blue, late epochs in orange"></canvas>
         <p id="colour-note" class="colour-note" hidden>
-          <span class="swatch blue"></span> earlier epochs
-          <span class="swatch orange"></span> later epochs. Fixed sources look white;
-          a moving or varying source leaves a blue-to-orange trail.
-          Colours are a visualisation of infrared data, not what an eye would see.
+          <span class="swatch blue"></span> early <span class="swatch orange"></span> late.
+          Still stars look white; a star that moves leaves a blue-to-orange trail.
         </p>
         <div id="map-wrap" class="map-wrap" hidden>
           <canvas id="map-canvas" class="map-canvas" tabindex="0"
@@ -61,7 +59,6 @@
             <b id="map-headline"></b>
             <span id="map-detail"></span>
             <span class="caution">Candidate only, not a detection: confirm in several bands and against catalogues.</span>
-            <button id="save-map-img" type="button" class="ghost" aria-label="Save motion map as PNG with caption">Save image</button>
           </div>
         </div>
         <div id="compare-wrap" hidden></div>
@@ -81,7 +78,7 @@
           <div class="row wrap center">
             <button type="button" class="primary" data-auto-demo>Watch the 1-minute demo</button>
             <button id="quick-start">Load Barnard's Star (cached)</button>
-            <button id="tour-start-empty" type="button" class="ghost">Step-by-step tour</button>
+            <button id="tour-start-empty" type="button" class="ghost" hidden>Step-by-step tour</button>
           </div>
         </div>
 
@@ -121,8 +118,6 @@
             <span>Speed</span>
             <input id="speed" type="range" min="1" max="12" step="1" value="4" />
           </label>
-          <button id="sound-toggle" type="button" class="ghost" aria-pressed="false">Sound</button>
-          <button id="save-movie" type="button" class="ghost" aria-label="Save movie of the current frames as WebM">Save movie</button>
         </div>
       </section>
 
@@ -200,11 +195,12 @@
 
         <section data-pane="learn" hidden>
           <h2>New here?</h2>
-          <div class="row wrap">
+          <!-- The tour, "Why it moves" and the demo each have one home elsewhere (the bubbles, the top bar, the empty cube page). -->
+          <div class="row wrap" hidden>
             <button id="learn-tour" type="button" class="primary">Take the guided tour</button>
             <button id="learn-orbit" type="button" class="ghost">Why does it move?</button>
           </div>
-          <button type="button" data-auto-demo>Watch the 1-minute demo</button>
+          <p class="hint">Not sure what a word means? Press <b>?</b> in the top bar, then the question marks.</p>
           <h2>Keyboard</h2>
           <dl class="provenance keys">
             <dt>Space</dt><dd>play or pause</dd>
@@ -294,7 +290,12 @@
             </div>
           </details>
           <details class="fold">
-            <summary>Save and share</summary>
+            <summary>Save, share and sound</summary>
+            <div class="row export-row">
+              <button id="save-movie" type="button" class="ghost grow" aria-label="Save movie of the current frames as WebM">Save movie</button>
+              <button id="sound-toggle" type="button" class="ghost grow" aria-pressed="false">Sound</button>
+            </div>
+            <button id="save-map-img" type="button" class="ghost" aria-label="Save motion map as PNG with caption">Save motion map</button>
             <div class="row export-row">
               <button id="save-tilt-img" type="button" class="ghost grow" aria-label="Save tilt result as PNG with caption">Save image</button>
               <button id="tilt-snap" type="button" class="ghost grow" aria-label="Save tilt snap clip as WebM, velocity from zero to current">Snap clip</button>
@@ -303,7 +304,7 @@
             <p id="export-status" class="hint small" role="status"></p>
             <p id="dossier-status" class="hint small" role="status"></p>
           </details>
-          <button id="open-orbit" type="button" class="linkish">Why does a nearby object move?</button>
+          <button id="open-orbit" type="button" class="linkish" hidden>Why does a nearby object move?</button>
           <p class="hint small">
             Any object found this way is a <strong>candidate</strong>, never a confirmed discovery.
           </p>
@@ -382,14 +383,6 @@
           This browser cannot draw the 3D globe. Everything still works from the lists and the
           position form on the right.
         </p>
-        <div class="hero">
-          <p class="eyebrow">NASA Space Apps 2026 &middot; Planet X and SPHEREx</p>
-          <p>Real NASA images of one sky patch, stacked through time. Things that move stand out.</p>
-          <div class="hero-cta">
-            <button type="button" class="primary" data-intro-start>Start with Barnard's Star</button>
-          </div>
-          <p class="hero-note">Or drag the globe and click a pin.</p>
-        </div>
         <div class="gl-foot">
           <div id="globe-controls" class="gl-controls" role="group" aria-label="Globe controls">
             <button type="button" data-globe="left" aria-label="Turn globe left">&larr;</button>
@@ -427,11 +420,12 @@
           <div id="globe-pick" class="pick" role="status" aria-live="polite">
             <p class="hint">Click the sky to pick a position.</p>
           </div>
-          <h3>Mission targets</h3>
-          <ul id="globe-targets" class="plain-list"></ul>
-          <h3>Cubes already built</h3>
+          <h3 hidden>Mission targets</h3>
+          <ul id="globe-targets" class="plain-list" hidden></ul>
+          <h3>Presets</h3>
+          <p class="hint small">Saved cubes: they open instantly. Barnard's Star is the best first one.</p>
           <ul id="globe-cubes" class="plain-list"></ul>
-          <div class="row wrap">
+          <div class="row wrap" hidden>
             <button id="globe-quick" type="button" class="primary">Quick start: Barnard's Star</button>
             <button id="globe-tour" type="button" class="ghost">Guided tour</button>
           </div>
@@ -537,7 +531,7 @@
               dominated by parallax and the tilt must follow that wobble, not a straight line.
             </p>
           </details>
-          <div class="row wrap">
+          <div class="row wrap" hidden>
             <button id="orbit-back" type="button" class="primary">Back to the time cube</button>
             <button id="orbit-to-globe" type="button" class="ghost">Sky</button>
           </div>

@@ -178,5 +178,29 @@ button > .help-dot { background: #000; }
 .plain-now:empty { display: none; }
 .inset figcaption { font-family: var(--sans); font-size: 0.78rem; line-height: 1.5; color: var(--ink-2); }
 
+/* Compare: the two dates and the mode on one line, the picture, one caption line. */
+.cmp-wrap { gap: 0.8rem; }
+.cmp-controls { align-items: flex-end; justify-content: center; gap: 0.6rem 0.8rem; }
+.cmp-controls .field { flex-direction: row; align-items: center; gap: 0.45rem; font: 10px/1 var(--pixel); color: var(--title); }
+.cmp-controls .field select { max-width: 210px; font-family: var(--sans); font-size: 0.86rem; }
+.cmp-vs { font: 9px/1 var(--pixel); color: var(--ink-3); align-self: center; }
+.cmp-modes { gap: 0.35rem; margin-left: 0.6rem; }
+.cmp-modes .chip { font: 9px/1.4 var(--pixel); text-transform: uppercase; padding: 0.55rem 0.7rem; }
+.cmp-legend { text-align: center; font-size: 0.86rem; color: var(--ink-2); }
+.cmp-frame { border: 4px double var(--wall); border-radius: 6px; }
+.cmp-cap { font-family: var(--pixel); font-size: 8px; padding: 0.3rem 0.5rem; border-radius: 2px; border-color: var(--wall); background: rgba(0, 0, 0, 0.85); }
+.colour-note { font-size: 0.82rem; }
+
+/* Globe presets: one button per saved cube, the name first. */
+#globe-cubes { gap: 0.4rem; }
+#globe-cubes .preset {
+  width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 0.6rem; text-align: left;
+  padding: 0.6rem 0.75rem; background: #000; border: 2px solid var(--hair);
+}
+#globe-cubes .preset b { font: 9px/1.5 var(--pixel); color: var(--title); text-transform: uppercase; }
+#globe-cubes .preset small { font-size: 0.74rem; color: var(--ink-3); white-space: nowrap; }
+#globe-cubes .preset:hover:not(:disabled) { border-color: var(--glow); }
+#globe-cubes li:first-child .preset { border-color: var(--glow); box-shadow: 0 0 10px rgba(94, 242, 255, 0.3); }
+
 /* Projection mode keeps its own high-contrast walls. */
 body.projection .panel, body.projection .deck { border: 4px double #fff; }

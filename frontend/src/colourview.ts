@@ -20,6 +20,8 @@ export function drawColourComposite(
   frames: ColourFrame[],
   npix: number,
   canvas: HTMLCanvasElement,
+  /** Scale each frame by its own spread first (frames in different units, e.g. WISE then SPHEREx). */
+  perFrame = false,
 ): boolean {
   if (frames.length < 2) return false;
   const ordered = [...frames].sort((a, b) => a.mjd - b.mjd);
@@ -31,13 +33,16 @@ export function drawColourComposite(
   const size = npix * npix;
   const stride = Math.max(1, Math.floor(size / 4000));
   const offsets: number[] = [];
+  const scales: number[] = [];
   const pooled: number[] = [];
   for (const f of ordered) {
     const sample: number[] = [];
     for (let i = 0; i < size; i += stride) if (Number.isFinite(f.data[i])) sample.push(f.data[i]);
     const med = percentile(sample, 50);
+    const spread = perFrame ? Math.max(percentile(sample.map((v) => v - med), 99) , 1e-12) : 1;
     offsets.push(med);
-    for (const v of sample) pooled.push(v - med);
+    scales.push(spread);
+    for (const v of sample) pooled.push((v - med) / spread);
   }
   const hi = Math.max(percentile(pooled, 99.7), 1e-9);
   const soft = Math.max(percentile(pooled, 90), hi * 0.02);
@@ -54,11 +59,12 @@ export function drawColourComposite(
     wEarly += we;
     wLate += wl;
     const off = offsets[k];
+    const sc = scales[k];
     for (let i = 0; i < size; i++) {
       const v = f.data[i];
       if (!Number.isFinite(v)) continue;
-      early[i] += we * (v - off);
-      late[i] += wl * (v - off);
+      early[i] += (we * (v - off)) / sc;
+      late[i] += (wl * (v - off)) / sc;
     }
   });
 

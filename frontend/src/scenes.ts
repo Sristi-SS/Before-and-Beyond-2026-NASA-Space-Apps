@@ -228,9 +228,18 @@ function renderLists(): void {
   if (!targetList.length) tl.append(Object.assign(document.createElement("li"), { textContent: "The target list is not available (is the API running?)." }));
   const cl = $("globe-cubes");
   cl.replaceChildren();
-  for (const p of patches) {
+  // Presets: the name, big; the size of the cube, small.  Barnard's Star first: it is the one to start with.
+  const order = [...patches].sort((a, b) => Number(/barnard/i.test(b.target)) - Number(/barnard/i.test(a.target)));
+  for (const p of order) {
     const li = document.createElement("li");
-    li.append(button(describePatch(p), () => openCube(p), "linkish"));
+    const b = button("", () => openCube(p), "preset");
+    b.title = describePatch(p);
+    const name = document.createElement("b");
+    name.textContent = p.target;
+    const meta = document.createElement("small");
+    meta.textContent = `${p.n_spherex + p.n_wise} pictures`;
+    b.append(name, meta);
+    li.append(b);
     cl.append(li);
   }
   if (!patches.length) cl.append(Object.assign(document.createElement("li"), { textContent: "No cubes have been built yet." }));

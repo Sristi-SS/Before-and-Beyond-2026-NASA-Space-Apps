@@ -115,7 +115,9 @@ export function initShell(): void {
     }
   }).observe(document.body, { attributes: true, attributeFilter: ["class", "data-scene"], subtree: true });
 
-  // Small screens: panels lie over the stage, so start with them closed.
+  // The time cube opens with its two panels closed: the picture, the view buttons and the play bar are
+  // enough to start.  CONTROLS and TOOLS on the edges open them.  Small screens close every panel.
+  for (const id of ["dock-controls", "dock-tilt"]) document.getElementById(id)?.classList.add("closed");
   if (window.innerWidth < 920) for (const d of $$(".dock")) d.classList.add("closed");
   syncHandles();
 }

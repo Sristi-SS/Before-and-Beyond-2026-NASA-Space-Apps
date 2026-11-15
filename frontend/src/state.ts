@@ -49,14 +49,6 @@ function flag(raw: string | null, fallback: boolean): boolean {
   return raw === "1" || raw === "true";
 }
 
-/** Phones get the Gaia overlay off until the visitor asks for it. */
-function isPhone(): boolean {
-  try {
-    return window.matchMedia("(max-width: 700px)").matches;
-  } catch {
-    return false;
-  }
-}
 
 function num(raw: string | null, fallback: number): number {
   if (raw === null || raw.trim() === "") return fallback;
@@ -95,12 +87,12 @@ export function readState(): UrlState {
     vy: num(p.get("vy"), 0),
     view: view && VIEWS.includes(view) ? view : "cube",
     movie: flag(p.get("movie"), false),
-    gaia: flag(p.get("gaia"), !isPhone()),
+    gaia: flag(p.get("gaia"), false), // the rings bury the picture; Tools turns them on
     static: p.get("static") === "none" ? "none" : "median",
     ...readPixel(p),
     a: p.has("a") ? Math.max(0, Math.round(num(p.get("a"), 0))) : null,
     b: p.has("b") ? Math.max(0, Math.round(num(p.get("b"), 0))) : null,
-    cmp: CMPS.includes(p.get("cmp") as CmpMode) ? (p.get("cmp") as CmpMode) : "diff",
+    cmp: CMPS.includes(p.get("cmp") as CmpMode) ? (p.get("cmp") as CmpMode) : "side",
     sim: flag(p.get("sim"), false),
     simp: /^[-\d.,e]+$/i.test(p.get("simp") ?? "") ? p.get("simp") : null,
   };

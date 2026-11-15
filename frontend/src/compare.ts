@@ -70,10 +70,11 @@ export function computeDiff(a: Float32Array, b: Float32Array, n: number): DiffRe
   return { diff, best };
 }
 
-const BLUE_END: [number, number, number] = [47, 116, 181];
-const ORANGE_END: [number, number, number] = [232, 118, 28];
+// The theme's data colours on black: no change stays dark, so a change is the only thing that lights up.
+const BLUE_END: [number, number, number] = [88, 180, 255];
+const ORANGE_END: [number, number, number] = [255, 162, 74];
 
-/** Diverging blue (dimmer) - white - orange (brighter) map; never red/green. */
+/** Diverging blue (dimmer) - black - orange (brighter) map; never red/green. */
 export function drawDiff(diff: Float32Array, n: number, canvas: HTMLCanvasElement, clip = 5): void {
   canvas.width = n;
   canvas.height = n;
@@ -85,14 +86,14 @@ export function drawDiff(diff: Float32Array, n: number, canvas: HTMLCanvasElemen
       const v = diff[(n - 1 - y) * n + x];
       const o = (y * n + x) * 4;
       if (!Number.isFinite(v)) {
-        img.data.set([40, 44, 50, 255], o);
+        img.data.set([24, 26, 36, 255], o);
         continue;
       }
       const t = Math.min(1, Math.abs(v) / clip);
       const end = v < 0 ? BLUE_END : ORANGE_END;
-      img.data[o] = 255 + (end[0] - 255) * t;
-      img.data[o + 1] = 255 + (end[1] - 255) * t;
-      img.data[o + 2] = 255 + (end[2] - 255) * t;
+      img.data[o] = end[0] * t;
+      img.data[o + 1] = end[1] * t;
+      img.data[o + 2] = end[2] * t;
       img.data[o + 3] = 255;
     }
   }
@@ -118,7 +119,7 @@ export class CompareView {
 
   private readonly selA = el("select");
   private readonly selB = el("select");
-  private readonly radios = new Map<CmpMode, HTMLInputElement>();
+  private readonly modeButtons = new Map<CmpMode, HTMLButtonElement>();
   private readonly fade = el("input");
   private readonly fadeField = el("label", "field");
   private readonly jump = el("button", "", "Jump to largest change");
@@ -139,28 +140,24 @@ export class CompareView {
     this.mode = mode;
     root.className = "cmp-wrap";
     const labelA = el("label", "field");
-    labelA.append(el("span", "", "Epoch A"), this.selA);
+    labelA.append(el("span", "", "A"), this.selA);
     const labelB = el("label", "field");
-    labelB.append(el("span", "", "Epoch B"), this.selB);
+    labelB.append(el("span", "", "B"), this.selB);
     this.selA.setAttribute("aria-label", "Epoch A");
     this.selB.setAttribute("aria-label", "Epoch B");
 
+    // Three ways to look, as one row of buttons.  (Fade was a fourth; it said nothing the swipe does not.)
+    if (this.mode === "fade") this.mode = "side";
     const group = el("div", "cmp-modes");
-    group.setAttribute("role", "radiogroup");
-    group.setAttribute("aria-label", "Comparison mode");
-    const names: Array<[CmpMode, string]> = [["side", "Side by side"], ["swipe", "Swipe"], ["fade", "Fade"], ["diff", "Difference"]];
+    group.setAttribute("role", "group");
+    group.setAttribute("aria-label", "How to compare");
+    const names: Array<[CmpMode, string]> = [["side", "Side by side"], ["swipe", "Swipe"], ["diff", "Difference"]];
     for (const [value, text] of names) {
-      const input = el("input");
-      input.type = "radio";
-      input.name = "cmp-mode";
-      input.value = value;
-      input.addEventListener("change", () => {
-        if (input.checked) this.setMode(value);
-      });
-      this.radios.set(value, input);
-      const label = el("label", "check");
-      label.append(input, el("span", "", text));
-      group.append(label);
+      const b = el("button", "chip", text);
+      b.type = "button";
+      b.addEventListener("click", () => this.setMode(value));
+      this.modeButtons.set(value, b);
+      group.append(b);
     }
 
     this.fade.type = "range";
@@ -172,10 +169,10 @@ export class CompareView {
     this.fade.addEventListener("input", () => this.render());
 
     this.open.disabled = true;
-    const buttons = el("div", "cmp-buttons");
-    buttons.append(this.jump, this.open);
     const controls = el("div", "cmp-controls");
-    controls.append(labelA, labelB, group, this.fadeField, buttons);
+    const vs = el("span", "cmp-vs", "vs");
+    vs.setAttribute("aria-hidden", "true");
+    controls.append(labelA, vs, labelB, group);
 
     for (const canvas of [this.canvasA, this.canvasB]) {
       canvas.className = "cmp-canvas";
@@ -192,7 +189,8 @@ export class CompareView {
     this.warn.setAttribute("role", "status");
     this.chips.setAttribute("role", "status");
     this.live.setAttribute("aria-live", "polite");
-    root.append(controls, this.warn, this.area, this.chips, this.legend, this.live);
+    // Three things on screen: the two dates and the mode, the picture, one line saying how to read it.
+    root.append(controls, this.area, this.legend, this.live);
 
     this.selA.addEventListener("change", () => this.setPair(Number(this.selA.value), this.ib));
     this.selB.addEventListener("change", () => this.setPair(this.ia, Number(this.selB.value)));
@@ -205,7 +203,11 @@ export class CompareView {
     this.frameA.addEventListener("pointermove", (ev) => {
       if (ev.buttons & 1 && this.mode === "swipe") this.onPointer(ev);
     });
-    this.radios.get(mode)!.checked = true;
+    this.syncModeButtons();
+  }
+
+  private syncModeButtons(): void {
+    for (const [value, b] of this.modeButtons) b.setAttribute("aria-pressed", String(value === this.mode));
   }
 
   get pair(): { a: number | null; b: number | null } {
@@ -219,7 +221,7 @@ export class CompareView {
     for (const select of [this.selA, this.selB]) {
       select.replaceChildren();
       frames.forEach((f, i) => {
-        const o = el("option", "", `${f.meta.obs_time.slice(0, 10)} · ${sourceName(f.meta)} · ${f.meta.wavelength_um.toFixed(2)} µm`);
+        const o = el("option", "", `${f.meta.obs_time.slice(0, 10)} · ${sourceName(f.meta)}`);
         o.value = String(i);
         select.append(o);
       });
@@ -268,7 +270,7 @@ export class CompareView {
       this.frameA.append(this.canvasA, this.caption("A", A));
       this.frameB.append(this.canvasB, this.caption("B", B));
       this.area.append(this.frameA, this.frameB);
-      this.legend.textContent = "Both epochs use the same colour scale rules: blue is faint, orange is bright. Colours are a visualisation of infrared light.";
+      this.legend.textContent = "A on the left, B on the right. Find the star that is in a different place.";
     } else if (this.mode === "swipe") {
       drawBoth();
       this.canvasB.style.clipPath = `inset(0 0 0 ${this.swipePos}%)`;
@@ -278,7 +280,7 @@ export class CompareView {
       this.frameA.classList.add("solo", "swipe");
       this.frameA.append(this.canvasA, this.canvasB, this.divider, this.caption("A", A, "left"), this.caption("B", B, "right"));
       this.area.append(this.frameA);
-      this.legend.textContent = "Drag the divider, or focus it and use the arrow keys. Left of the line is epoch A, right is epoch B.";
+      this.legend.textContent = "Drag the line across the picture: left of it is A, right of it is B.";
     } else if (this.mode === "fade") {
       drawBoth();
       this.canvasB.style.clipPath = "";
@@ -298,12 +300,10 @@ export class CompareView {
       this.frameA.classList.add("solo");
       this.frameA.append(this.canvasA);
       this.area.append(this.frameA);
+      const caveat = this.warn.textContent ? " Different instruments: trust where things are, not how bright." : "";
       this.legend.replaceChildren(
-        swatch("blue"), document.createTextNode(" dimmer in B   "),
-        swatch("white"), document.createTextNode(" no change   "),
-        swatch("orange"), document.createTextNode(
-          " brighter in B. Each epoch is first matched to the other by its own background and noise level; the colour spans ±5 sigma. A difference can be a real change, a different wavelength, or an artifact.",
-        ),
+        swatch("blue"), document.createTextNode(" was here in A   "),
+        swatch("orange"), document.createTextNode(` is here in B. Dark means no change.${caveat}`),
       );
     }
     if (this.mode !== "swipe") this.canvasB.style.clipPath = "";
@@ -337,6 +337,7 @@ export class CompareView {
   private setMode(mode: CmpMode): void {
     this.mode = mode;
     writeState({ cmp: mode });
+    this.syncModeButtons();
     this.render();
   }
 
