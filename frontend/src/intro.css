@@ -61,6 +61,13 @@ body.intro-open { overflow: hidden; }
 .intro-msg[hidden] { display: none; }
 .intro-transport { display: flex; align-items: center; gap: 12px; }
 .intro-transport input { flex: 1; accent-color: var(--ix-glow); }
+/* The site styles range thumbs itself (styles.css), so accent-color alone is ignored. */
+.intro-transport input::-webkit-slider-thumb {
+  border-radius: 2px; background: var(--ix-glow); box-shadow: 0 0 8px rgba(94, 242, 255, 0.7);
+}
+.intro-transport input::-moz-range-thumb {
+  border-radius: 2px; background: var(--ix-glow); box-shadow: 0 0 8px rgba(94, 242, 255, 0.7);
+}
 .intro-hud { font-variant-numeric: tabular-nums; color: var(--ix-ink); min-height: 1.5em; }
 .intro-key {
   display: inline-block; width: 22px; margin: 0 2px 0 0; vertical-align: middle;
