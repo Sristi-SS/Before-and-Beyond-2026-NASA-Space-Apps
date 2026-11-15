@@ -280,6 +280,10 @@ export class Globe {
   private readonly markTex: THREE.CanvasTexture;
   private readonly pinGroup = new THREE.Group();
   private readonly starGroup = new THREE.Group();
+  /** Star names, brightest first: a name that would overlap a brighter one is hidden, leaving just the star. */
+  private starLabels: Array<{ sprite: THREE.Sprite; dir: THREE.Vector3 }> = [];
+  /** Labels that always win a collision: the two sky lines. */
+  private lineLabels: Array<{ sprite: THREE.Sprite; dir: THREE.Vector3 }> = [];
   private pins: PinObject[] = [];
   private mark: THREE.Sprite;
   private raf = 0;
@@ -440,6 +444,7 @@ export class Globe {
       EQ2GAL[0][2] * gx[0] + EQ2GAL[1][2] * gx[1],
     ).multiplyScalar(1.04));
     labels.add(eclLabel, galLabel);
+    this.lineLabels = [eclLabel, galLabel].map((sprite) => ({ sprite, dir: sprite.position.clone().normalize() }));
     this.scene.add(labels);
   }
 
@@ -480,12 +485,15 @@ export class Globe {
     geo.setAttribute("size", new THREE.BufferAttribute(size, 1));
     // The material is shared and disposed with the globe, not with the points.
     this.starGroup.add(new THREE.Points(geo, this.starMat));
-    for (const s of data.stars) {
+    this.starLabels = [];
+    for (const s of [...data.stars].sort((a, b) => a.mag - b.mag)) {
       if (!s.name || s.mag > 1.7) continue;
       const label = textSprite(s.name, { height: 0.024, color: "#f1f4fb", font: "sans" });
-      label.center.set(-0.16, 0.5);
+      // Centred under the star, with a small gap below the star picture.
+      label.center.set(0.5, 1.55);
       label.position.copy(radecToVec(s.ra_deg, s.dec_deg, 1.0));
       this.starGroup.add(label);
+      this.starLabels.push({ sprite: label, dir: label.position.clone().normalize() });
     }
   }
 
@@ -652,6 +660,43 @@ export class Globe {
     return best;
   }
 
+  /** Screen box of a label sprite, in CSS pixels (y down). */
+  private labelBox(sprite: THREE.Sprite, dir: THREE.Vector3, w: number, h: number): [number, number, number, number] {
+    const v = dir.clone().project(this.camera);
+    const px = (v.x * 0.5 + 0.5) * w;
+    const py = (-v.y * 0.5 + 0.5) * h;
+    // Screen-sized sprites: scale is a fraction of the view through the projection.
+    const e = this.camera.projectionMatrix.elements;
+    const bw = (sprite.scale.x * e[0] * w) / 2;
+    const bh = (sprite.scale.y * e[5] * h) / 2;
+    const left = px - sprite.center.x * bw;
+    const top = py - (1 - sprite.center.y) * bh;
+    return [left, top, left + bw, top + bh];
+  }
+
+  /** Show each star's name unless it would overlap a name already shown; the star itself always stays. */
+  private placeStarLabels(camDir: THREE.Vector3): void {
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    const taken: Array<[number, number, number, number]> = [];
+    const pad = 3;
+    const hits = (b: [number, number, number, number]): boolean =>
+      taken.some((t) => b[0] < t[2] + pad && b[2] + pad > t[0] && b[1] < t[3] + pad && b[3] + pad > t[1]);
+    for (const p of this.pins) {
+      if (p.label && p.dir.dot(camDir) > -0.02) taken.push(this.labelBox(p.label, p.dir, w, h));
+    }
+    for (const l of this.lineLabels) taken.push(this.labelBox(l.sprite, l.dir, w, h));
+    for (const s of this.starLabels) {
+      let show = s.dir.dot(camDir) > -0.02; // same far-side cut-off as the pins
+      if (show) {
+        const box = this.labelBox(s.sprite, s.dir, w, h);
+        show = !hits(box);
+        if (show) taken.push(box);
+      }
+      s.sprite.visible = show;
+    }
+  }
+
   // -- loop ----------------------------------------------------------------
   private resize(): void {
     const w = Math.max(1, this.container.clientWidth);
@@ -702,6 +747,7 @@ export class Globe {
       (p.sprite.material as THREE.SpriteMaterial).opacity = front ? 1 : 0.22;
       if (p.label) (p.label.material as THREE.SpriteMaterial).opacity = front ? 1 : 0;
     }
+    this.placeStarLabels(camDir);
     this.renderer.render(this.scene, this.camera);
     const now = performance.now();
     if (this.opts.onView && now - this.lastView > 250) {
