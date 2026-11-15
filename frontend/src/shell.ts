@@ -10,7 +10,7 @@ const $ = <T extends HTMLElement>(sel: string, root: ParentNode = document): T |
 const $$ = <T extends HTMLElement>(sel: string, root: ParentNode = document): T[] => [...root.querySelectorAll<T>(sel)];
 
 /** The right-hand panel of each scene; the left panel exists only in the cube scene. */
-const RIGHT_DOCK: Record<string, string> = { cube: "dock-tilt", globe: "dock-globe", orbit: "dock-orbit" };
+const RIGHT_DOCK: Record<string, string> = { cube: "dock-tilt", globe: "dock-globe" };
 
 /** Show one tab of a panel (and open the panel if it is hidden). */
 export function showTab(dockId: string, tab: string): void {
@@ -101,10 +101,6 @@ export function initShell(): void {
   }
   select?.addEventListener("change", syncView);
   syncView();
-
-  // Shortcuts in the Learn tab.
-  document.getElementById("learn-tour")?.addEventListener("click", () => document.getElementById("tour-start")?.click());
-  document.getElementById("learn-orbit")?.addEventListener("click", () => document.getElementById("nav-orbit")?.click());
 
   // When the tour (or anything else) outlines an element, make sure it is on screen.
   new MutationObserver((records) => {

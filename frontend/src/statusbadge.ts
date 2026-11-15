@@ -1,13 +1,21 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
-// Header status badge fed by GET /api/status: "online", "data cached" or "offline demo".
+// Header status badge fed by GET /api/status: "Live archive", "Saved cubes only" or "Offline".
 interface Status {
   mode: "online" | "offline-cache";
   archive_ok: boolean | null;
   cached_targets: number;
   active_jobs: number;
+  /** "open": this visitor may rebuild a saved cube; "locked": only the maintainers may. */
+  refresh?: "open" | "locked";
 }
 
 let archiveOffline = false;
+let refreshLocked = true;
+
+/** True unless the server said this visitor may rebuild saved cubes (the maintainers, or a local copy). */
+export function isRefreshLocked(): boolean {
+  return refreshLocked;
+}
 
 /** True when the server could not reach the archive at its last check. */
 export function isArchiveOffline(): boolean {
@@ -15,8 +23,8 @@ export function isArchiveOffline(): boolean {
 }
 
 export const OFFLINE_BUILD_MESSAGE =
-  "The SPHEREx archive cannot be reached right now, so new cubes cannot be built. " +
-  "Cubes already in the cache (pick one on the Sky globe) still open normally.";
+  "NASA's archive cannot be reached right now, so a new cube cannot be built. " +
+  "The saved cubes (the presets on the Sky page) still open normally.";
 
 function show(badge: HTMLElement, text: string, title: string, kind: string): void {
   badge.textContent = text;
@@ -30,14 +38,18 @@ async function refresh(badge: HTMLElement): Promise<void> {
     if (!res.ok) throw new Error(String(res.status));
     const s = (await res.json()) as Status;
     archiveOffline = s.mode === "offline-cache";
+    refreshLocked = s.refresh !== "open";
+    window.dispatchEvent(new Event("status:changed"));
     if (archiveOffline) {
-      show(badge, "data cached", `Archive unreachable. ${s.cached_targets} cached cubes still work.`, "cached");
+      show(badge, "Saved cubes only",
+        `NASA's archive cannot be reached right now, so new places cannot be loaded. The ${s.cached_targets} saved cubes still open.`, "cached");
     } else {
-      show(badge, "online", `Archive reachable. ${s.cached_targets} cached cubes, ${s.active_jobs} building.`, "online");
+      show(badge, "Live archive",
+        `NASA's archive is reachable: any place in the sky can be loaded. ${s.cached_targets} cubes are saved here.`, "online");
     }
   } catch {
     archiveOffline = true;
-    show(badge, "offline demo", "The server is not reachable; only what is already loaded works.", "offline");
+    show(badge, "Offline", "The server cannot be reached. Only what is already on this page works.", "offline");
   }
 }
 

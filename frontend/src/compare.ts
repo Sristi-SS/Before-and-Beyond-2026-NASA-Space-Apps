@@ -1,19 +1,35 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
-// Compare view: two epochs side by side, with a swipe divider, a fade, or a difference map.
+// Compare view: two dates, and one picture of what changed between them.
+//
+// Three pictures in a row: BEFORE, AFTER, WHAT CHANGED.  There are no modes to choose.  The third
+// picture is black where nothing changed, amber where something appeared or got brighter, and blue
+// where something faded or left.  Rings mark the biggest changes in all three pictures.
+//
+// The two dates start on the first and last picture from the same telescope and the same infrared
+// colour, because pictures from different telescopes differ everywhere (WISE is blurrier than
+// SPHEREx), and that is not change in the sky.  If the visitor picks an unlike pair anyway, the
+// page says so and draws no difference picture.
 import type { FrameMeta } from "./api";
 import { drawSlice, type Stretch } from "./colormap";
-import { boxSmooth, EDGE_BORDER, robustStats } from "./clientstack";
-import type { Pixel } from "./picker";
-import { writeState, type CmpMode } from "./state";
-import { isWiseFrame, sourceName } from "./wise";
+import { EDGE_BORDER, robustStats } from "./clientstack";
+import { writeState } from "./state";
+import { isWiseFrame } from "./wise";
 
 /** Wavelengths further apart than this (µm) inside SPHEREx make a brightness change ambiguous. */
 export const WAVELENGTH_WARN_UM = 0.05;
-/** Detections need at least this many sigma before the tool says anything about them. */
-export const SIGNIFICANCE = 5;
-/** A peak this close to the edge (px) gets an "edge of image" note. */
-const EDGE_WARN_PX = 8;
-const GAIA_RADIUS_PX = 3;
+/** On top of a star that is in both pictures, a change must beat this share of the star's own brightness. */
+const STAR_TOLERANCE = 0.3;
+/** Per-pixel cap on the change, in noise units, so one hot pixel cannot pass as a point of light. */
+const CAP = 8;
+/** Smoothed change where colour starts, where it is fully on, and where a ring is drawn. */
+const T_START = 4;
+const T_FULL = 7;
+const T_RING = 6;
+const MAX_RINGS = 3;
+const RING_APART_PX = 16;
+
+const BRIGHTER: [number, number, number] = [255, 162, 74];
+const DIMMER: [number, number, number] = [88, 180, 255];
 
 export interface CompareFrame {
   meta: FrameMeta;
@@ -22,60 +38,92 @@ export interface CompareFrame {
 
 export interface CompareHooks {
   stretchFor(index: number): Stretch;
-  /** Whether a Gaia source is within `radiusPx` of (x, y) at either epoch; null when no Gaia data is loaded. */
-  gaiaNear(x: number, y: number, a: number, b: number, radiusPx: number): boolean | null;
-  openSpectrum(p: Pixel): void;
 }
 
-export interface DiffResult {
-  /** (B - A) in units of the difference noise, after matching each frame's background and noise scale. */
-  diff: Float32Array;
-  /** Largest smoothed |diff| outside the edge border, in sigma. */
-  best: { x: number; y: number; sigma: number; value: number } | null;
+export interface Change {
+  /** Smoothed (after minus before) in noise units; positive = brighter in the later picture. */
+  map: Float32Array;
+  /** The biggest changes, strongest first (grid pixels: x grows west, y grows north). */
+  spots: Array<{ x: number; y: number; value: number }>;
+}
+
+function smooth121(src: Float32Array, n: number): Float32Array {
+  const tmp = new Float32Array(src.length);
+  const out = new Float32Array(src.length);
+  for (let y = 0; y < n; y++) {
+    const row = y * n;
+    for (let x = 0; x < n; x++) {
+      tmp[row + x] = 0.25 * src[row + (x > 0 ? x - 1 : x)] + 0.5 * src[row + x] + 0.25 * src[row + (x < n - 1 ? x + 1 : x)];
+    }
+  }
+  for (let y = 0; y < n; y++) {
+    const up = (y > 0 ? y - 1 : y) * n;
+    const down = (y < n - 1 ? y + 1 : y) * n;
+    for (let x = 0; x < n; x++) out[y * n + x] = 0.25 * tmp[up + x] + 0.5 * tmp[y * n + x] + 0.25 * tmp[down + x];
+  }
+  return out;
 }
 
 /**
- * B minus A.  Each frame loses its robust background (median) and is divided by its robust noise,
- * so the two are on one scale; dividing by sqrt(2) makes pure noise come out near 1.  Peak search
- * uses a 3x3 smooth and the robust noise of the smoothed map.
+ * After minus before.  Each picture loses its background and is divided by its own noise, so the two
+ * are on one scale.  Where a star is in both pictures the change must beat a share of the star's
+ * brightness (a star's peak differs a little from picture to picture without the star changing).
  */
-export function computeDiff(a: Float32Array, b: Float32Array, n: number): DiffResult {
-  const sa = robustStats(a, 3);
-  const sb = robustStats(b, 3);
-  const diff = new Float32Array(n * n);
-  if (!(sa.sigma > 0) || !(sb.sigma > 0)) {
-    diff.fill(NaN);
-    return { diff, best: null };
+export function computeChange(before: Float32Array, after: Float32Array, n: number): Change | null {
+  const sa = robustStats(before, 3);
+  const sb = robustStats(after, 3);
+  if (!(sa.sigma > 0) || !(sb.sigma > 0)) return null;
+  const size = n * n;
+  const d = new Float32Array(size);
+  const both = new Float32Array(size);
+  for (let i = 0; i < size; i++) {
+    const a = before[i];
+    const b = after[i];
+    // An exact zero is a pixel outside the detector: nothing can be said there.
+    if (!Number.isFinite(a) || !Number.isFinite(b) || a === 0 || b === 0) continue;
+    const za = (a - sa.median) / sa.sigma;
+    const zb = (b - sb.median) / sb.sigma;
+    d[i] = (zb - za) * Math.SQRT1_2;
+    both[i] = Math.max(0, Math.min(za, zb));
   }
-  const k = Math.SQRT1_2;
-  for (let i = 0; i < diff.length; i++) {
-    diff[i] = ((b[i] - sb.median) / sb.sigma - (a[i] - sa.median) / sa.sigma) * k;
-  }
-  const clean = diff.map((v) => (Number.isFinite(v) ? v : 0));
-  const smooth = boxSmooth(clean, n);
-  const interior: number[] = [];
-  for (let y = EDGE_BORDER; y < n - EDGE_BORDER; y++) {
-    for (let x = EDGE_BORDER; x < n - EDGE_BORDER; x += 2) interior.push(smooth[y * n + x]);
-  }
-  const noise = robustStats(interior).sigma;
-  if (!(noise > 0)) return { diff, best: null };
-  let best: DiffResult["best"] = null;
-  for (let y = EDGE_BORDER; y < n - EDGE_BORDER; y++) {
-    for (let x = EDGE_BORDER; x < n - EDGE_BORDER; x++) {
-      const v = smooth[y * n + x];
-      if (!best || Math.abs(v) > Math.abs(best.value)) best = { x, y, sigma: 0, value: v };
+  const capped = new Float32Array(size);
+  for (let y = 0; y < n; y++) {
+    for (let x = 0; x < n; x++) {
+      let star = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx;
+          const yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < n && yy < n) star = Math.max(star, both[yy * n + xx]);
+        }
+      }
+      const tol = STAR_TOLERANCE * star;
+      const v = d[y * n + x] / Math.sqrt(1 + tol * tol);
+      capped[y * n + x] = Math.max(-CAP, Math.min(CAP, v));
     }
   }
-  if (best) best.sigma = Math.abs(best.value) / noise;
-  return { diff, best };
+  const map = smooth121(capped, n);
+  for (let i = 0; i < size; i++) map[i] *= 2;
+
+  // The biggest changes: local maxima of |map|, away from the edge and from each other.
+  const found: Change["spots"] = [];
+  for (let y = EDGE_BORDER; y < n - EDGE_BORDER; y++) {
+    for (let x = EDGE_BORDER; x < n - EDGE_BORDER; x++) {
+      const v = map[y * n + x];
+      if (Math.abs(v) >= T_RING) found.push({ x, y, value: v });
+    }
+  }
+  found.sort((p, q) => Math.abs(q.value) - Math.abs(p.value));
+  const spots: Change["spots"] = [];
+  for (const p of found) {
+    if (spots.length >= MAX_RINGS) break;
+    if (spots.every((s) => Math.hypot(s.x - p.x, s.y - p.y) >= RING_APART_PX)) spots.push(p);
+  }
+  return { map, spots };
 }
 
-// The theme's data colours on black: no change stays dark, so a change is the only thing that lights up.
-const BLUE_END: [number, number, number] = [88, 180, 255];
-const ORANGE_END: [number, number, number] = [255, 162, 74];
-
-/** Diverging blue (dimmer) - black - orange (brighter) map; never red/green. */
-export function drawDiff(diff: Float32Array, n: number, canvas: HTMLCanvasElement, clip = 5): void {
+/** Black where nothing changed; amber where brighter in the later picture, blue where dimmer. */
+export function drawChange(change: Change, n: number, canvas: HTMLCanvasElement): void {
   canvas.width = n;
   canvas.height = n;
   const ctx = canvas.getContext("2d");
@@ -83,17 +131,14 @@ export function drawDiff(diff: Float32Array, n: number, canvas: HTMLCanvasElemen
   const img = ctx.createImageData(n, n);
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
-      const v = diff[(n - 1 - y) * n + x];
+      const v = change.map[(n - 1 - y) * n + x]; // row 0 of the data is the south edge
       const o = (y * n + x) * 4;
-      if (!Number.isFinite(v)) {
-        img.data.set([24, 26, 36, 255], o);
-        continue;
-      }
-      const t = Math.min(1, Math.abs(v) / clip);
-      const end = v < 0 ? BLUE_END : ORANGE_END;
-      img.data[o] = end[0] * t;
-      img.data[o + 1] = end[1] * t;
-      img.data[o + 2] = end[2] * t;
+      let a = (Math.abs(v) - T_START) / (T_FULL - T_START);
+      a = a <= 0 ? 0 : Math.pow(Math.min(1, a), 0.6);
+      const end = v < 0 ? DIMMER : BRIGHTER;
+      img.data[o] = end[0] * a;
+      img.data[o + 1] = end[1] * a;
+      img.data[o + 2] = end[2] * a;
       img.data[o + 3] = 255;
     }
   }
@@ -107,332 +152,196 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
   return e;
 }
 
+const telescope = (m: FrameMeta): string => (isWiseFrame(m) ? "WISE" : "SPHEREx");
+/** Pictures that can fairly be subtracted share this key. */
+const kind = (m: FrameMeta): string => `${telescope(m)}-${m.detector}`;
+const date = (m: FrameMeta): string => m.obs_time.slice(0, 10);
+
+/** First and last picture from one telescope and one infrared colour; the longest such stretch wins. */
+export function defaultPair(frames: CompareFrame[]): { a: number; b: number } {
+  const last = Math.max(0, frames.length - 1);
+  let best: { a: number; b: number; days: number } | null = null;
+  for (let i = 0; i < frames.length; i++) {
+    for (let j = 0; j < frames.length; j++) {
+      const A = frames[i].meta;
+      const B = frames[j].meta;
+      const days = B.mjd - A.mjd;
+      if (days <= 20 || kind(A) !== kind(B)) continue;
+      if (!isWiseFrame(A) && Math.abs(A.wavelength_um - B.wavelength_um) > WAVELENGTH_WARN_UM) continue;
+      if (!best || days > best.days) best = { a: i, b: j, days };
+    }
+  }
+  if (best) return { a: best.a, b: best.b };
+  // Nothing matches: the oldest and the newest picture, whatever took them.
+  let lo = 0;
+  let hi = last;
+  frames.forEach((f, i) => {
+    if (f.meta.mjd < frames[lo].meta.mjd) lo = i;
+    if (f.meta.mjd > frames[hi].meta.mjd) hi = i;
+  });
+  return { a: lo, b: hi };
+}
+
+interface Panel {
+  figure: HTMLElement;
+  caption: HTMLElement;
+  frame: HTMLElement;
+  canvas: HTMLCanvasElement;
+  message: HTMLElement;
+}
+
 export class CompareView {
   private frames: CompareFrame[] = [];
   private npix = 128;
-  private mode: CmpMode;
   private ia = 0;
   private ib = 0;
-  private swipePos = 50;
-  private result: DiffResult | null = null;
-  private ring: Pixel | null = null;
 
   private readonly selA = el("select");
   private readonly selB = el("select");
-  private readonly modeButtons = new Map<CmpMode, HTMLButtonElement>();
-  private readonly fade = el("input");
-  private readonly fadeField = el("label", "field");
-  private readonly jump = el("button", "", "Jump to largest change");
-  private readonly open = el("button", "", "Open spectrum there");
-  private readonly warn = el("p", "cmp-warn");
+  private readonly note = el("p", "cmp-note");
   private readonly area = el("div", "cmp-area");
-  private readonly chips = el("div", "cmp-chips");
   private readonly legend = el("p", "cmp-legend");
-  private readonly live = el("p", "sr-only");
-  private readonly frameA = el("div", "cmp-frame");
-  private readonly frameB = el("div", "cmp-frame");
-  private readonly canvasA = el("canvas");
-  private readonly canvasB = el("canvas");
-  private readonly divider = el("div", "cmp-divider");
-  private readonly rings: HTMLElement[] = [];
+  private readonly before = this.panel("Before");
+  private readonly after = this.panel("After");
+  private readonly changed = this.panel("What changed");
 
-  constructor(root: HTMLElement, private readonly hooks: CompareHooks, mode: CmpMode) {
-    this.mode = mode;
+  constructor(root: HTMLElement, private readonly hooks: CompareHooks) {
     root.className = "cmp-wrap";
     const labelA = el("label", "field");
-    labelA.append(el("span", "", "A"), this.selA);
+    labelA.append(el("span", "", "Before"), this.selA);
     const labelB = el("label", "field");
-    labelB.append(el("span", "", "B"), this.selB);
-    this.selA.setAttribute("aria-label", "Epoch A");
-    this.selB.setAttribute("aria-label", "Epoch B");
-
-    // Three ways to look, as one row of buttons.  (Fade was a fourth; it said nothing the swipe does not.)
-    if (this.mode === "fade") this.mode = "side";
-    const group = el("div", "cmp-modes");
-    group.setAttribute("role", "group");
-    group.setAttribute("aria-label", "How to compare");
-    const names: Array<[CmpMode, string]> = [["side", "Side by side"], ["swipe", "Swipe"], ["diff", "Difference"]];
-    for (const [value, text] of names) {
-      const b = el("button", "chip", text);
-      b.type = "button";
-      b.addEventListener("click", () => this.setMode(value));
-      this.modeButtons.set(value, b);
-      group.append(b);
-    }
-
-    this.fade.type = "range";
-    this.fade.min = "0";
-    this.fade.max = "100";
-    this.fade.value = "50";
-    this.fade.setAttribute("aria-label", "Fade from epoch A to epoch B");
-    this.fadeField.append(el("span", "", "A to B"), this.fade);
-    this.fade.addEventListener("input", () => this.render());
-
-    this.open.disabled = true;
+    labelB.append(el("span", "", "After"), this.selB);
     const controls = el("div", "cmp-controls");
-    const vs = el("span", "cmp-vs", "vs");
-    vs.setAttribute("aria-hidden", "true");
-    controls.append(labelA, vs, labelB, group);
-
-    for (const canvas of [this.canvasA, this.canvasB]) {
-      canvas.className = "cmp-canvas";
-      canvas.width = 128;
-      canvas.height = 128;
-    }
-    this.canvasA.setAttribute("role", "img");
-    this.canvasB.setAttribute("role", "img");
-    this.divider.tabIndex = 0;
-    this.divider.setAttribute("role", "slider");
-    this.divider.setAttribute("aria-label", "Swipe divider between epoch A (left) and epoch B (right)");
-    this.divider.setAttribute("aria-valuemin", "0");
-    this.divider.setAttribute("aria-valuemax", "100");
-    this.warn.setAttribute("role", "status");
-    this.chips.setAttribute("role", "status");
-    this.live.setAttribute("aria-live", "polite");
-    // Three things on screen: the two dates and the mode, the picture, one line saying how to read it.
-    root.append(controls, this.area, this.legend, this.live);
-
+    controls.append(labelA, labelB);
+    this.note.setAttribute("role", "status");
+    this.changed.figure.classList.add("changed");
+    this.area.append(this.before.figure, this.after.figure, this.changed.figure);
+    this.legend.append(
+      swatch("orange"), document.createTextNode(" appeared or got brighter "),
+      swatch("blue"), document.createTextNode(" faded or left. Black: no change. Rings mark the biggest changes."),
+    );
+    root.append(controls, this.note, this.area, this.legend);
     this.selA.addEventListener("change", () => this.setPair(Number(this.selA.value), this.ib));
     this.selB.addEventListener("change", () => this.setPair(this.ia, Number(this.selB.value)));
-    this.jump.addEventListener("click", () => this.jumpToLargest());
-    this.open.addEventListener("click", () => {
-      if (this.ring) this.hooks.openSpectrum(this.ring);
-    });
-    this.divider.addEventListener("keydown", (ev) => this.onDividerKey(ev));
-    this.frameA.addEventListener("pointerdown", (ev) => this.onPointer(ev));
-    this.frameA.addEventListener("pointermove", (ev) => {
-      if (ev.buttons & 1 && this.mode === "swipe") this.onPointer(ev);
-    });
-    this.syncModeButtons();
   }
 
-  private syncModeButtons(): void {
-    for (const [value, b] of this.modeButtons) b.setAttribute("aria-pressed", String(value === this.mode));
+  private panel(title: string): Panel {
+    const figure = el("figure", "cmp-panel");
+    const caption = el("figcaption", "", title);
+    const frame = el("div", "cmp-frame");
+    const canvas = el("canvas", "cmp-canvas");
+    canvas.width = canvas.height = 128;
+    canvas.setAttribute("role", "img");
+    const message = el("p", "cmp-msg");
+    message.hidden = true;
+    frame.append(canvas, message);
+    figure.append(caption, frame);
+    return { figure, caption, frame, canvas, message };
   }
 
   get pair(): { a: number | null; b: number | null } {
     return { a: this.ia, b: this.ib };
   }
 
-  /** New frame set (group, axis or simulator changed).  `a`/`b` are the wanted epochs from the URL, if any. */
+  /** New pictures (another set, order or the simulator).  `a`/`b` are the dates wanted by the link, if any. */
   setFrames(frames: CompareFrame[], npix: number, a: number | null, b: number | null): void {
     this.frames = frames;
     this.npix = npix;
     for (const select of [this.selA, this.selB]) {
       select.replaceChildren();
       frames.forEach((f, i) => {
-        const o = el("option", "", `${f.meta.obs_time.slice(0, 10)} · ${sourceName(f.meta)}`);
+        const o = el("option", "", `${date(f.meta)} · ${telescope(f.meta)}`);
         o.value = String(i);
         select.append(o);
       });
     }
     const last = Math.max(0, frames.length - 1);
     const ok = (v: number | null): v is number => v !== null && v >= 0 && v <= last;
-    this.ia = ok(a) ? a : 0;
-    this.ib = ok(b) ? b : last;
+    const start = defaultPair(frames);
+    this.ia = ok(a) ? a : start.a;
+    this.ib = ok(b) ? b : start.b;
     this.selA.value = String(this.ia);
     this.selB.value = String(this.ib);
-    this.result = null;
-    this.ring = null;
-    this.open.disabled = true;
-    this.chips.replaceChildren();
     writeState({ a: this.ia, b: this.ib });
-  }
-
-  /** Redraw (call when the view is shown or the frames changed). */
-  render(): void {
-    const A = this.frames[this.ia];
-    const B = this.frames[this.ib];
-    this.area.replaceChildren();
-    this.rings.length = 0;
-    if (!A || !B) {
-      this.warn.textContent = "Two epochs are needed to compare.";
-      return;
-    }
-    this.warn.textContent = this.wavelengthWarning(A.meta, B.meta);
-    const n = this.npix;
-    const describe = (f: CompareFrame, which: string): string =>
-      `Epoch ${which}: ${f.meta.obs_time.slice(0, 10)}, ${sourceName(f.meta)}, ${f.meta.wavelength_um.toFixed(2)} micrometres`;
-    this.canvasA.setAttribute("aria-label", describe(A, "A"));
-    this.canvasB.setAttribute("aria-label", describe(B, "B"));
-    const drawBoth = (): void => {
-      drawSlice(A.data, n, this.canvasA, this.hooks.stretchFor(this.ia));
-      drawSlice(B.data, n, this.canvasB, this.hooks.stretchFor(this.ib));
-    };
-    this.fadeField.hidden = this.mode !== "fade";
-    this.frameA.replaceChildren();
-    this.frameB.replaceChildren();
-    this.frameA.className = "cmp-frame";
-    this.frameB.className = "cmp-frame";
-
-    if (this.mode === "side") {
-      drawBoth();
-      this.frameA.append(this.canvasA, this.caption("A", A));
-      this.frameB.append(this.canvasB, this.caption("B", B));
-      this.area.append(this.frameA, this.frameB);
-      this.legend.textContent = "A on the left, B on the right. Find the star that is in a different place.";
-    } else if (this.mode === "swipe") {
-      drawBoth();
-      this.canvasB.style.clipPath = `inset(0 0 0 ${this.swipePos}%)`;
-      this.canvasB.style.opacity = "1";
-      this.divider.style.left = `${this.swipePos}%`;
-      this.divider.setAttribute("aria-valuenow", String(Math.round(this.swipePos)));
-      this.frameA.classList.add("solo", "swipe");
-      this.frameA.append(this.canvasA, this.canvasB, this.divider, this.caption("A", A, "left"), this.caption("B", B, "right"));
-      this.area.append(this.frameA);
-      this.legend.textContent = "Drag the line across the picture: left of it is A, right of it is B.";
-    } else if (this.mode === "fade") {
-      drawBoth();
-      this.canvasB.style.clipPath = "";
-      this.canvasB.style.opacity = String(Number(this.fade.value) / 100);
-      this.frameA.classList.add("solo", "fade");
-      this.frameA.append(this.canvasA, this.canvasB);
-      this.area.append(this.frameA);
-      this.legend.textContent = "Slide from epoch A (0) to epoch B (100). Things that change seem to flicker or grow.";
-    } else {
-      this.result = computeDiff(A.data, B.data, n);
-      drawDiff(this.result.diff, n, this.canvasA);
-      this.canvasA.setAttribute(
-        "aria-label",
-        `Difference map, epoch B minus epoch A. Blue is dimmer in B, orange is brighter in B, white is no change.`,
-      );
-      this.canvasA.style.clipPath = "";
-      this.frameA.classList.add("solo");
-      this.frameA.append(this.canvasA);
-      this.area.append(this.frameA);
-      const caveat = this.warn.textContent ? " Different instruments: trust where things are, not how bright." : "";
-      this.legend.replaceChildren(
-        swatch("blue"), document.createTextNode(" was here in A   "),
-        swatch("orange"), document.createTextNode(` is here in B. Dark means no change.${caveat}`),
-      );
-    }
-    if (this.mode !== "swipe") this.canvasB.style.clipPath = "";
-    if (this.mode !== "fade") this.canvasB.style.opacity = "1";
-    for (const frame of this.mode === "side" ? [this.frameA, this.frameB] : [this.frameA]) {
-      const ring = el("div", "pick-marker cmp-ring");
-      ring.hidden = this.ring === null;
-      ring.setAttribute("aria-hidden", "true");
-      frame.append(ring);
-      this.rings.push(ring);
-    }
-    this.placeRings();
-  }
-
-  private caption(which: string, f: CompareFrame, side?: string): HTMLElement {
-    const c = el("span", `cmp-cap${side ? ` ${side}` : ""}`, `${which}: ${f.meta.obs_time.slice(0, 10)} · ${f.meta.wavelength_um.toFixed(2)} µm`);
-    return c;
-  }
-
-  private wavelengthWarning(a: FrameMeta, b: FrameMeta): string {
-    if (isWiseFrame(a) !== isWiseFrame(b) || (isWiseFrame(a) && a.detector !== b.detector)) {
-      return "Warning: these two epochs come from different instruments or bands, so they are not on the same scale and a difference is not a brightness change.";
-    }
-    const d = Math.abs(a.wavelength_um - b.wavelength_um);
-    if (!isWiseFrame(a) && d > WAVELENGTH_WARN_UM) {
-      return `Warning: the wavelengths differ (${a.wavelength_um.toFixed(2)} vs ${b.wavelength_um.toFixed(2)} µm), so a brightness difference may be a colour difference, not a change in the object.`;
-    }
-    return "";
-  }
-
-  private setMode(mode: CmpMode): void {
-    this.mode = mode;
-    writeState({ cmp: mode });
-    this.syncModeButtons();
-    this.render();
   }
 
   private setPair(a: number, b: number): void {
     this.ia = a;
     this.ib = b;
-    this.ring = null;
-    this.open.disabled = true;
-    this.chips.replaceChildren();
     writeState({ a, b });
     this.render();
   }
 
-  private onPointer(ev: PointerEvent): void {
-    if (this.mode !== "swipe") return;
-    const rect = this.frameA.getBoundingClientRect();
-    if (rect.width < 2) return;
-    this.swipePos = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100));
-    this.applySwipe();
-  }
-
-  private onDividerKey(ev: KeyboardEvent): void {
-    const step = ev.shiftKey ? 10 : 2;
-    if (ev.key === "ArrowLeft" || ev.key === "ArrowDown") this.swipePos -= step;
-    else if (ev.key === "ArrowRight" || ev.key === "ArrowUp") this.swipePos += step;
-    else if (ev.key === "Home") this.swipePos = 0;
-    else if (ev.key === "End") this.swipePos = 100;
-    else return;
-    ev.preventDefault();
-    this.swipePos = Math.max(0, Math.min(100, this.swipePos));
-    this.applySwipe();
-  }
-
-  private applySwipe(): void {
-    this.canvasB.style.clipPath = `inset(0 0 0 ${this.swipePos}%)`;
-    this.divider.style.left = `${this.swipePos}%`;
-    this.divider.setAttribute("aria-valuenow", String(Math.round(this.swipePos)));
-  }
-
-  private placeRings(): void {
-    for (const ring of this.rings) {
-      if (!this.ring) {
-        ring.hidden = true;
-        continue;
-      }
-      ring.hidden = false;
-      ring.style.left = `${((this.ring.x + 0.5) / this.npix) * 100}%`;
-      ring.style.top = `${((this.npix - this.ring.y - 0.5) / this.npix) * 100}%`;
-      ring.style.width = `${(3 / this.npix) * 100 * 2}%`;
-      ring.style.height = ring.style.width;
+  /** Why the two pictures cannot fairly be subtracted, or "" when they can. */
+  private unlike(a: FrameMeta, b: FrameMeta): string {
+    if (telescope(a) !== telescope(b)) {
+      return "These two pictures come from different telescopes. WISE is blurrier than SPHEREx, so they differ everywhere, even where the sky did not change. Pick two dates from the same telescope to see what changed.";
     }
+    if (kind(a) !== kind(b)) {
+      return "These two pictures were taken in different infrared colours, so stars differ in brightness without having changed. Pick two dates in the same colour to see what changed.";
+    }
+    return "";
   }
 
-  /** Mark the pixel with the largest |difference| / noise and say what to make of it. */
-  private jumpToLargest(): void {
+  /** Redraw (call when the view is shown or the pictures changed). */
+  render(): void {
     const A = this.frames[this.ia];
     const B = this.frames[this.ib];
-    if (!A || !B) return;
-    const r = computeDiff(A.data, B.data, this.npix);
-    this.result = r;
-    this.chips.replaceChildren();
-    const add = (text: string): void => {
-      this.chips.append(el("span", "cmp-chip", text));
-    };
-    if (!r.best) {
-      add("Not enough evidence to classify");
-      this.announce("No usable pixels to compare.");
+    for (const p of [this.before, this.after, this.changed]) {
+      for (const ring of p.frame.querySelectorAll(".cmp-ring")) ring.remove();
+    }
+    if (!A || !B) {
+      this.note.textContent = "Two pictures are needed to compare.";
       return;
     }
-    const { x, y, sigma, value } = r.best;
-    this.ring = { x, y };
-    this.open.disabled = false;
-    this.placeRings();
-    const dir = value > 0 ? "brighter" : "dimmer";
-    const head = `Largest change: pixel (${x}, ${y}), ${sigma > 99 ? "over 99" : sigma.toFixed(1)} sigma, ${dir} in B.`;
-    const hasEdge = Math.min(x, y, this.npix - 1 - x, this.npix - 1 - y) < EDGE_WARN_PX;
-    if (hasEdge) add("Edge of image: detector edges are less reliable");
-    if (sigma < SIGNIFICANCE) add(`Low signal: below ${SIGNIFICANCE} sigma`);
-    const near = this.hooks.gaiaNear(x, y, this.ia, this.ib, GAIA_RADIUS_PX);
-    if (near) add("Near a Gaia star: probably that star, not something new");
-    if (this.warn.textContent) add("Different wavelengths or instruments");
-    if (sigma < SIGNIFICANCE) add("Not enough evidence to classify");
-    else add("Candidate to inspect, not a detection");
-    this.announce(head);
-    const lead = el("span", "cmp-chip lead", head);
-    this.chips.prepend(lead);
-  }
+    const n = this.npix;
+    const title = (f: CompareFrame, which: string): string =>
+      `${which} · ${date(f.meta)} · ${telescope(f.meta)}`;
+    this.before.caption.textContent = title(A, "Before");
+    this.after.caption.textContent = title(B, "After");
+    drawSlice(A.data, n, this.before.canvas, this.hooks.stretchFor(this.ia));
+    drawSlice(B.data, n, this.after.canvas, this.hooks.stretchFor(this.ib));
+    this.before.canvas.setAttribute("aria-label", `The sky on ${date(A.meta)}, taken by ${telescope(A.meta)}`);
+    this.after.canvas.setAttribute("aria-label", `The sky on ${date(B.meta)}, taken by ${telescope(B.meta)}`);
 
-  private announce(text: string): void {
-    this.live.textContent = text;
+    const problem = this.ia === this.ib ? "Both dates are the same picture. Pick two different dates." : this.unlike(A.meta, B.meta);
+    const change = problem ? null : computeChange(A.data, B.data, n);
+    this.changed.canvas.hidden = !change;
+    this.changed.message.hidden = !!change;
+    if (!change) {
+      this.note.textContent = problem;
+      this.changed.message.textContent = problem ? "No difference picture for this pair." : "These pictures cannot be compared.";
+      this.changed.canvas.setAttribute("aria-label", "No difference picture");
+      return;
+    }
+    drawChange(change, n, this.changed.canvas);
+    const years = Math.abs(B.meta.mjd - A.meta.mjd) / 365.25;
+    const apart = years >= 1 ? `${years.toFixed(1)} years apart` : `${Math.round(years * 365.25)} days apart`;
+    const waveGap = !isWiseFrame(A.meta) && Math.abs(A.meta.wavelength_um - B.meta.wavelength_um) > WAVELENGTH_WARN_UM;
+    const count = change.spots.length;
+    this.note.textContent =
+      `Same telescope, ${apart}. ` +
+      (count === 0 ? "Nothing changed clearly between these two dates." : count === 1 ? "One clear change is ringed." : `${count} clear changes are ringed.`) +
+      (waveGap ? ` The two pictures are in slightly different infrared colours (${A.meta.wavelength_um.toFixed(2)} and ${B.meta.wavelength_um.toFixed(2)} µm), so trust where things are more than how bright.` : "");
+    this.changed.canvas.setAttribute(
+      "aria-label",
+      `What changed between ${date(A.meta)} and ${date(B.meta)}: amber is brighter on the later date, blue is dimmer, black is no change. ${count} clear changes.`,
+    );
+    for (const p of [this.before, this.after, this.changed]) {
+      for (const s of change.spots) {
+        const ring = el("div", "pick-marker cmp-ring");
+        ring.setAttribute("aria-hidden", "true");
+        ring.style.left = `${((s.x + 0.5) / n) * 100}%`;
+        ring.style.top = `${((n - s.y - 0.5) / n) * 100}%`;
+        ring.style.width = ring.style.height = `${(10 / n) * 100}%`;
+        p.frame.append(ring);
+      }
+    }
   }
 }
 
-function swatch(kind: string): HTMLElement {
-  const s = el("i", `swatch ${kind}`);
+function swatch(colour: string): HTMLElement {
+  const s = el("i", `swatch ${colour}`);
   s.setAttribute("aria-hidden", "true");
   return s;
 }

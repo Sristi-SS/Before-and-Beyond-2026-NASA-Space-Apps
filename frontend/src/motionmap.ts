@@ -3,7 +3,7 @@ import type { MotionMapResult } from "./api";
 import { autoStretch, drawSlice } from "./colormap";
 
 const SIZE = 640;
-const MARGIN = { left: 62, right: 16, top: 16, bottom: 52 };
+const MARGIN = { left: 74, right: 16, top: 16, bottom: 66 };
 const ORANGE = "#f08a3c";
 const BLUE = "#4aa3df";
 const TEXT = "#c9d6e2";
@@ -144,7 +144,7 @@ export class MotionMapView {
     ctx.strokeRect(b.x0 + 0.5, b.y0 + 0.5, b.w, b.h);
 
     ctx.fillStyle = TEXT;
-    ctx.font = "13px 'Segoe UI', system-ui, sans-serif";
+    ctx.font = "20px 'Segoe UI', system-ui, sans-serif";
     const tick = niceTick(r.span);
     const first = -Math.floor(r.span / tick) * tick;
     ctx.textAlign = "center";
@@ -163,11 +163,11 @@ export class MotionMapView {
     }
     ctx.textAlign = "center";
     ctx.textBaseline = "alphabetic";
-    ctx.fillText("vx, east to the left (arcsec/yr)", b.x0 + b.w / 2, SIZE - 8);
+    ctx.fillText("east  \u2190  speed, in \u2033 a year  \u2192  west", b.x0 + b.w / 2, SIZE - 8);
     ctx.save();
     ctx.translate(15, b.y0 + b.h / 2);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText("vy, north up (arcsec/yr)", 0, 0);
+    ctx.fillText("south  \u2190  \u2192  north", 0, 0);
     ctx.restore();
 
     // v = 0 crosshair (blue, dashed).
@@ -212,20 +212,51 @@ function niceTick(span: number): number {
   return (f < 1.5 ? 1 : f < 3.5 ? 2 : f < 7.5 ? 5 : 10) * mag;
 }
 
-/** Plain-language summary of a map, with numbers a visitor can check. */
-export function describeMap(r: MotionMapResult): { headline: string; detail: string } {
+const COMPASS = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
+
+/** Direction of a motion in words (north is up in the pictures, east is to the left). */
+export function compass(vx: number, vy: number): string {
+  if (vx === 0 && vy === 0) return "nowhere";
+  const pa = (Math.atan2(vx, vy) * 180) / Math.PI; // from north, through east
+  return `toward the ${COMPASS[((Math.round(pa / 45) % 8) + 8) % 8]}`;
+}
+
+export interface MapNotes {
+  /** The grid is too coarse for this range: a mover can fall between two squares. */
+  coarse?: boolean;
+  /** A motion some catalogue already lists for this place, to compare with. */
+  known?: { name: string; vx: number; vy: number } | null;
+  simulated?: boolean;
+}
+
+/**
+ * What the map means, in plain words.  The score is not a signal-to-noise ratio (pure noise scores
+ * 10 to 36 on these fields), so the verdict uses two ratios, calibrated on the saved cubes: the
+ * best square against no motion, and against the middle square of the whole map.
+ */
+export function describeMap(r: MotionMapResult, notes: MapNotes = {}): { headline: string; detail: string } {
   const sorted = Float32Array.from(r.data).sort();
   const median = sorted[Math.floor(sorted.length / 2)];
-  const ratio = r.zeroScore > 0 ? r.bestScore / r.zeroScore : NaN;
-  const contrast = median > 0 ? r.bestScore / median : NaN;
+  const overZero = r.zeroScore > 0 ? r.bestScore / r.zeroScore : NaN;
+  const overMedian = median > 0 ? r.bestScore / median : NaN;
+  const atZero = Math.abs(r.bestVx) <= r.step + 1e-9 && Math.abs(r.bestVy) <= r.step + 1e-9;
   const atEdge = Math.abs(r.bestVx) >= r.span - 1e-9 || Math.abs(r.bestVy) >= r.span - 1e-9;
+  const clear = !atZero && overZero >= 2.5 && overMedian >= 3;
+  const likely = !atZero && overZero >= 1.6 && overMedian >= 2;
+  const speed = Math.hypot(r.bestVx, r.bestVy);
+  const where = `${speed.toFixed(1)}″ a year ${compass(r.bestVx, r.bestVy)}`;
+  let detail = clear || likely
+    ? `The pictures line up best at ${where}: ${overZero.toFixed(1)} times sharper than with no motion. It is a candidate to check, not a discovery.`
+    : "No motion lines the pictures up clearly better than leaving them as they are.";
+  if (atEdge && (clear || likely)) detail += " The best square is at the edge of the range: try faster speeds.";
+  if (notes.coarse) detail += " This range is too wide for the squares to be fine enough, so a mover could fall between two of them. Try a smaller range.";
+  if (notes.known && !notes.simulated) {
+    const k = notes.known;
+    detail += ` For comparison, star catalogues list ${k.name} at ${Math.hypot(k.vx, k.vy).toFixed(1)}″ a year ${compass(k.vx, k.vy)}.`;
+  }
   return {
-    headline: `Best candidate velocity: (${r.bestVx.toFixed(1)}, ${r.bestVy.toFixed(1)}) arcsec/yr`,
-    detail:
-      `Score ${r.bestScore.toFixed(1)} vs ${r.zeroScore.toFixed(1)} at v = 0` +
-      (Number.isFinite(ratio) ? ` (${ratio.toFixed(2)}×)` : "") +
-      (Number.isFinite(contrast) ? `; ${contrast.toFixed(2)}× the map median` : "") +
-      (atEdge ? ". The best cell is on the edge of the grid: widen the span." : "."),
+    headline: clear ? "Something moves here." : likely ? "Something may be moving." : "Nothing stands out.",
+    detail,
   };
 }
 

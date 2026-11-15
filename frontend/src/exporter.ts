@@ -269,6 +269,27 @@ export async function exportCanvasImage(x: ExportContext, src: HTMLCanvasElement
   x.say(`${kind} image saved.`);
 }
 
+/** PNG of one picture of the cube, with its date and source underneath. */
+export async function exportFrame(x: ExportContext, index: number): Promise<void> {
+  const frames = x.frames();
+  const i = Math.max(0, Math.min(frames.length - 1, index));
+  const f = frames[i];
+  if (!f) {
+    x.say("Open a cube first.");
+    return;
+  }
+  const sim = x.simActive();
+  const out = newCanvas();
+  paintFrame(out, document.createElement("canvas"), f.data, x.npix(), x.stretchFor(i), frameLines(f.meta, x.targetName(), sim), sim);
+  const blob = await new Promise<Blob | null>((res) => out.toBlob((b) => res(b), "image/png"));
+  if (!blob) {
+    x.say("The picture could not be made.");
+    return;
+  }
+  deliver(blob, `spherex-time-cube-${sim ? "SIMULATED-" : ""}${(f.meta.obs_time ?? "").slice(0, 10)}.png`);
+  x.say("Picture saved.");
+}
+
 export function wireExports(
   x: ExportContext,
   ids: { movie: string; tilt: string; snap: string; map: string; tiltCanvas: string; mapCanvas: string },

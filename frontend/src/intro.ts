@@ -8,6 +8,7 @@ import * as api from "./api";
 import { drawSlice } from "./colormap";
 import { decimalYear } from "./gaia";
 import { showScene } from "./scenes";
+import { startWhyMoves } from "./whymoves";
 import { DET_W2, ownStretch, selectMovieFrames } from "./wise";
 
 const SEEN_KEY = "intro-seen";
@@ -98,7 +99,7 @@ export function initIntro(): void {
 function startBarnard(): void {
   close();
   showScene("cube");
-  document.getElementById("quick-start")?.click();
+  window.dispatchEvent(new CustomEvent("open-target", { detail: "barnard" }));
 }
 
 let closeFn: (() => void) | null = null;
@@ -121,6 +122,10 @@ function open(root: HTMLElement): void {
   const scrub = $<HTMLInputElement>("[data-intro-scrub]");
   const lastFocus = document.activeElement as HTMLElement | null;
 
+  const screens = [...root.querySelectorAll<HTMLElement>(".intro-screen")];
+  const whyCanvas = root.querySelector<HTMLCanvasElement>("[data-intro-why]");
+  let stopWhy: (() => void) | null = null;
+  let resume = false;
   let card = 0;
   let movie: Movie | null = null;
   let frame = 0;
@@ -128,15 +133,6 @@ function open(root: HTMLElement): void {
   let playing = false;
   const off = document.createElement("canvas");
   const stretches: Array<{ lo: number; hi: number }> = [];
-
-  const showCard = (i: number, focus: boolean): void => {
-    card = Math.max(0, Math.min(cards.length - 1, i));
-    cards.forEach((c, k) => (c.hidden = k !== card));
-    back.hidden = card === 0;
-    next.hidden = card === cards.length - 1;
-    step.textContent = `${card + 1} / ${cards.length}`;
-    if (focus) cards[card].querySelector<HTMLElement>("h2")?.focus();
-  };
 
   const draw = (): void => {
     if (!movie) return;
@@ -187,6 +183,28 @@ function open(root: HTMLElement): void {
     if (playing) timer = window.setTimeout(tick, FRAME_MS);
   };
 
+  const showCard = (i: number, focus: boolean): void => {
+    card = Math.max(0, Math.min(cards.length - 1, i));
+    cards.forEach((c, k) => (c.hidden = k !== card));
+    back.hidden = card === 0;
+    next.hidden = card === cards.length - 1;
+    step.textContent = `${card + 1} / ${cards.length}`;
+    if (focus) cards[card].querySelector<HTMLElement>("h2")?.focus();
+    // Each card names the picture beside it: the real movie, or the drawing of why things move.
+    const want = cards[card].dataset.screen ?? "movie";
+    for (const sc of screens) sc.hidden = sc.dataset.screen !== want;
+    if (want === "why") {
+      resume = resume || playing;
+      setPlaying(false);
+      if (!stopWhy && whyCanvas) stopWhy = startWhyMoves(whyCanvas);
+    } else {
+      stopWhy?.();
+      stopWhy = null;
+      if (resume) setPlaying(true);
+      resume = false;
+    }
+  };
+
   const onKey = (ev: KeyboardEvent): void => {
     if (ev.key === "Escape") {
       ev.preventDefault();
@@ -204,6 +222,8 @@ function open(root: HTMLElement): void {
 
   closeFn = () => {
     setPlaying(false);
+    stopWhy?.();
+    stopWhy = null;
     root.hidden = true;
     document.body.classList.remove("intro-open");
     root.removeEventListener("keydown", onKey);

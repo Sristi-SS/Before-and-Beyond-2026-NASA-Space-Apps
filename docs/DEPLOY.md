@@ -18,6 +18,7 @@ suite are what was actually measured.
 | `SPHEREX_ANALYSIS_MAX` | `40` | Motion-map and candidate searches allowed per address per minute. |
 | `SPHEREX_CORS_ORIGINS` | `*` | Comma-separated list of sites that may read the API. The data is public and there is no login, so `*` is safe. |
 | `SPHEREX_ALLOWED_ORIGINS` | unset | Extra sites whose pages may open `/ws/hardware`. This site and localhost are always allowed. |
+| `SPHEREX_ADMIN_TOKEN` | unset | Who may rebuild a saved cube ("Update cube"). With a token set, only requests that send it in the `X-Admin-Token` header may. With no token, only a browser on the same machine may (not one behind a proxy). Visitors can still check for newer pictures. |
 | `SPHEREX_HW_TOKEN` | unset | Shared token for `/ws/hardware` (`?token=...`). Never commit it. With no token, a device is accepted only from the same machine or the local network. Set a token for any device that connects over the internet, and use `wss://`. |
 
 ## (a) Local run
@@ -65,6 +66,7 @@ What the free plan means:
   about one minute. Open the site a few minutes before a demo.
 - **Small memory (512 MB).** A new cube build or a wide motion map may fail. The saved cubes
   are the safe path for a demo.
+- `SPHEREX_ADMIN_TOKEN` is made by Render too: visitors to the public site cannot rebuild the saved cubes.
 - `SPHEREX_HW_TOKEN` is made by Render. Read it in the Render dashboard if a device must connect.
 
 ## (d) Jetson Orin Nano

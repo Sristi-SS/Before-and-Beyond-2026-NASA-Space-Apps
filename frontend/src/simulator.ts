@@ -25,8 +25,9 @@ export interface DistantMotion {
 
 /**
  * SIMPLIFIED TEACHING MODEL for a hypothetical distant planet at `dAU` astronomical units.
- *  - Parallax: Earth's orbit makes it shift by about 206265 / d_AU arcsec over half a year, so as
- *    a straight-line speed that is 2 * 206265 / d_AU arcsec/yr (east-west, illustrative direction).
+ *  - Parallax: the parallax angle is p = 206265 / d_AU arcsec.  Earth crosses its orbit (2 AU) in half
+ *    a year, so the object swings by 2p in half a year: as a straight-line speed that is
+ *    4 * 206265 / d_AU arcsec/yr (east-west, illustrative direction).
  *  - Orbital drift: a circular orbit at d AU has v = 2 pi / sqrt(d) AU/yr, so it moves
  *    206265 * 2 pi / d^1.5 arcsec/yr (north-south, illustrative direction).
  * Real parallax is a sinusoid, not a line; this is only valid over short baselines.
@@ -34,7 +35,7 @@ export interface DistantMotion {
 export function distantPlanetMotion(dAU: number): DistantMotion {
   const parallaxArcsec = ARCSEC_PER_RAD / dAU;
   return {
-    vx: parallaxArcsec / 0.5,
+    vx: (2 * parallaxArcsec) / 0.5,
     vy: (ARCSEC_PER_RAD * 2 * Math.PI) / Math.pow(dAU, 1.5),
     parallaxArcsec,
   };
@@ -45,7 +46,7 @@ export function simSelfCheck(): string[] {
   const failures: string[] = [];
   const near = (a: number, b: number, rel: number): boolean => Math.abs(a - b) <= rel * Math.abs(b);
   if (!near(distantPlanetMotion(206265).parallaxArcsec, 1, 1e-9)) failures.push("1 pc is 1 arcsec of parallax");
-  if (!near(distantPlanetMotion(206265).vx, 2, 1e-9)) failures.push("half-year shift gives 2 arcsec/yr at 206265 AU");
+  if (!near(distantPlanetMotion(206265).vx, 4, 1e-9)) failures.push("a swing of 2p in half a year is 4 arcsec/yr at 206265 AU");
   if (!near(distantPlanetMotion(1).vy, 1296000, 1e-3)) failures.push("1 AU circular orbit is one turn per year");
   if (!(distantPlanetMotion(1e5).vx < distantPlanetMotion(1e4).vx)) failures.push("farther means slower");
   const [mx, my] = motionPixels(6.15, 6.15, 1, 6.15);
@@ -262,17 +263,17 @@ export class Simulator {
   private build(root: HTMLElement): void {
     root.replaceChildren();
     const head = node("div", { className: "sim-head" }, [
-      node("h2", { textContent: "Simulator — test mode" }),
+      node("h2", { textContent: "Practise on a made-up planet" }),
       node("span", { className: "sim-tag", textContent: "SIMULATED" }),
     ]);
     const lead = node("p", {
       className: "hint",
       textContent:
-        "Plants a made-up moving object in COPIES of the loaded frames, inside your browser, so you can practise finding it with the tilt and the motion map. The server and the real archive data are never changed. Turning this off restores the real frames exactly.",
+        "The computer hides a made-up moving dot in copies of the pictures, and you try to find it. The real pictures are never changed, and everything is marked SIMULATED while this is on.",
     });
     const toggleLabel = node("label", { className: "check" }, [
       this.toggle,
-      node("span", { textContent: "Plant a simulated object" }),
+      node("span", { textContent: "Add a made-up object with my own settings" }),
     ]);
     this.toggle.checked = this.enabled;
     this.toggle.addEventListener("change", () => this.setEnabled(this.toggle.checked));
@@ -308,11 +309,10 @@ export class Simulator {
       this.levelSelect.append(node("option", { value: level, textContent: level[0].toUpperCase() + level.slice(1) }));
     }
     const seek = node("div", { className: "sim-seek" }, [
-      node("h3", { textContent: "Hide and seek" }),
       node("p", {
         className: "hint small",
         textContent:
-          "A planet is hidden with random speed and direction. Use the Motion map or the tilt to find its velocity, leave that velocity in the tilt boxes, then check your answer. Within one grid step counts as found. It works best on a WISE group, which spans many years. If the field already holds a real mover (WISE 0855 does), the map shows that real peak too: it is not your planet, look for the other one.",
+          "1. Hide a planet. 2. Under Find, press Search, then press the brightest square. 3. Come back and check your answer. It works best on the WISE pictures, which span many years.",
       }),
       node("div", { className: "row" }, [field("Difficulty", this.levelSelect), this.hideBtn]),
       this.checkBtn,
@@ -327,7 +327,7 @@ export class Simulator {
       node("p", {
         className: "hint",
         textContent:
-          "The farther away something is, the smaller the angle it sweeps for the same real motion, like a far-off car that barely seems to move. Part of an object's apparent motion is parallax: Earth swings around the Sun, so a nearby object shifts against the background and a distant one shifts less, roughly 206265 divided by its distance in AU, in arcseconds, over half a year. A slow orbital drift comes on top. So a hypothetical planet hundreds or thousands of AU away would show only a tiny, steady shift between SPHEREx visits, which is why many frames are stacked.",
+          "The farther away something is, the smaller the angle it sweeps for the same real motion, like a far-off car that barely seems to move. Part of the motion is parallax: Earth swings around the Sun, so a nearby object sways against the far-away stars, by about 2 × 206265 divided by its distance in AU, in arcseconds, every half year. A slow drift along its own orbit comes on top. A planet thousands of AU away shows only a small shift between visits, which is why many pictures are added together.",
       }),
       node("p", {
         className: "hint small",
@@ -336,7 +336,8 @@ export class Simulator {
       }),
     ]);
 
-    root.append(head, lead, toggleLabel, this.status, this.paramBox, seek, explain);
+    const own = node("details", { className: "fold" }, [node("summary", { textContent: "Make my own" }), toggleLabel, this.paramBox]);
+    root.append(head, lead, seek, this.status, own, explain);
 
     for (const input of [this.kInput, this.xInput, this.yInput, this.vxInput, this.vyInput]) {
       input.addEventListener("change", () => this.readInputs());
@@ -400,8 +401,8 @@ export class Simulator {
     this.params.vx = vx;
     this.params.vy = vy;
     this.distRead.textContent =
-      `d = ${Math.round(dAU).toLocaleString("en-US")} AU. Parallax ≈ 206265 / d = ${m.parallaxArcsec.toFixed(2)} arcsec over half a year, ` +
-      `so about ${m.vx.toFixed(1)} arcsec/yr east-west, plus an orbital drift of about ${m.vy.toFixed(2)} arcsec/yr north-south. ` +
+      `d = ${Math.round(dAU).toLocaleString("en-US")} AU. Parallax 206265 / d = ${m.parallaxArcsec.toFixed(2)}″, so it swings ${(2 * m.parallaxArcsec).toFixed(1)}″ in half a year: ` +
+      `about ${m.vx.toFixed(1)}″ a year east-west, plus a drift along its orbit of about ${m.vy.toFixed(2)}″ a year north-south. ` +
       "Simplified teaching model.";
     this.syncInputs();
     this.changed();
@@ -427,10 +428,10 @@ export class Simulator {
     this.distSlider.disabled = !this.enabled || locked || !this.distRadio.checked;
     this.checkBtn.disabled = !locked;
     this.status.textContent = !this.enabled
-      ? "Off: you are looking at real archive data."
+      ? ""
       : locked
         ? "A planet is hidden. Its parameters are not shown or stored in the link."
-        : "ON: every view shows simulated frames, not real data.";
+        : "On: every view now shows pictures with a made-up object.";
   }
 
   private changed(): void {
@@ -444,7 +445,7 @@ export class Simulator {
   private hide(): void {
     const ctx = this.hooks.context();
     if (!ctx) {
-      this.result.textContent = "Load a cube and pick a single wavelength group first.";
+      this.result.textContent = "Open a cube and choose one set of pictures first.";
       return;
     }
     this.enabled = true;
@@ -453,11 +454,11 @@ export class Simulator {
     const hiddenParams = randomHidden(this.level, ctx.npix, ctx.pixscale, ctx.spanYears, ctx.mapSpan);
     if (!hiddenParams) {
       this.result.textContent =
-        `This group covers only ${ctx.spanYears.toFixed(1)} years, so even the fastest motion in the search range moves less than ${MIN_TRACK_PX} pixels and would be confused with a fixed star. Pick a WISE group (many years) or the 16-year movie, then try again.`;
+        `These pictures cover only ${ctx.spanYears.toFixed(1)} years, too short for a hidden planet to move far enough. Choose the WISE pictures (Controls, Pictures), then try again.`;
       return;
     }
     this.hidden = hiddenParams;
-    this.result.textContent = `A ${this.level} planet is hidden. Open the Motion map and find it.`;
+    this.result.textContent = `A ${this.level} planet is hidden. Go to Find and press Search.`;
     this.refreshUi();
     this.changed();
   }

@@ -43,6 +43,7 @@ def rank_candidates(
     span: float = 12.0,
     step: float = 1.0,
     top: int = 5,
+    mm: tilt.MotionMap | None = None,
 ) -> tuple[list[dict], tilt.MotionMap]:
     """Local maxima of the motion map, best first, with a refined stack position.
 
@@ -50,7 +51,8 @@ def rank_candidates(
     source that did not subtract well, not a mover.  Two maxima closer than two
     grid steps count as one.
     """
-    mm = tilt.motion_map(images, mjds, pixscale, span=span, step=step)
+    if mm is None:
+        mm = tilt.motion_map(images, mjds, pixscale, span=span, step=step)
     score = np.asarray(mm.score, dtype=np.float64)
     nv = score.shape[0]
     half = nv // 2
@@ -117,6 +119,10 @@ def job_candidates(
         raise HTTPException(404, "job not found")
     if detector > 6 and detector not in (101, 102):
         raise HTTPException(422, "detector must be 1-6, 101 or 102")
+    try:
+        tilt.check_grid(span, step)        # refuse an oversized grid before any work
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     service.enforce_analysis_limit(request)
     state = job.status()
     frames = sorted((m for m in state.get("frames", []) if m.get("status") == "ok"), key=lambda m: m["mjd"])
@@ -139,8 +145,12 @@ def job_candidates(
     pixscale = float(g.get("pixscale_arcsec", config.DEFAULT_PIXSCALE))
     npix = int(g.get("npix", images[0].shape[0]))
     mjds = [float(m["mjd"]) for m in metas]
+    # The same map the motion-map picture uses (and the same key), so it is computed once.
+    map_memo = (key, detector, float(span), float(step), len(images), state.get("updated"))
     try:
-        found, mm = rank_candidates(images, mjds, pixscale, span=span, step=step, top=top)
+        with service.heavy_slot():
+            mm = tilt.motion_map_cached(map_memo, images, mjds, pixscale, span, step)
+            found, mm = rank_candidates(images, mjds, pixscale, span=span, step=step, top=top, mm=mm)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 

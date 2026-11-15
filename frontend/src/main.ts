@@ -2,10 +2,10 @@
 import "@fontsource/press-start-2p/400.css";
 import "./styles.css";
 import "./arcade.css";
+import "./calm.css";
 import { initShell, showTab, syncView } from "./shell";
-import { initShare, initShortcuts, Sonifier } from "./extras";
+import { initShare, initShortcuts } from "./extras";
 import { flushState } from "./state";
-import { showScene } from "./scenes";
 import { initHelp } from "./help";
 import { initIntro } from "./intro";
 import { walkthrough } from "./walkthrough";
@@ -17,17 +17,18 @@ import { buildChecklist, renderChecklist } from "./checklist";
 import { clientMotionMap, clientTilt, type StackFrame } from "./clientstack";
 import { CompareView } from "./compare";
 import { autoStretch, drawSlice, percentile, type Stretch } from "./colormap";
-import { drawColourComposite } from "./colourview";
+import { ChangePicture } from "./colourview";
 import { CubeView } from "./cube";
-import { decimalYear, GaiaOverlay, sourcesNear } from "./gaia";
+import { decimalYear, GaiaOverlay } from "./gaia";
 import { renderGlossary } from "./glossary";
-import { describeMap, markPeak, MotionMapView, peakPixel } from "./motionmap";
+import { compass, describeMap, markPeak, MotionMapView, peakPixel } from "./motionmap";
 import { PixelPicker, type Pixel } from "./picker";
+import { reveal } from "./shell";
 import { Simulator } from "./simulator";
-import { wireExports } from "./exporter";
+import { exportFrame, wireExports } from "./exporter";
 import { wireDossier } from "./dossier";
 import { SpectrumPanel, type PanelTab } from "./spectrumpanel";
-import { initScenes, registerOpenJob, setCurrentTarget } from "./scenes";
+import { initScenes, registerOpenJob, showScene } from "./scenes";
 import { Tour } from "./tour";
 import { initHardware } from "./hardware";
 import { initModes } from "./modes";
@@ -77,7 +78,6 @@ const zeroCanvas = el<HTMLCanvasElement>("zero-canvas");
 const tiltCaption = el<HTMLElement>("tilt-caption");
 const tiltMetrics = el<HTMLDivElement>("tilt-metrics");
 const emptyState = el<HTMLDivElement>("empty-state");
-const quickStart = el<HTMLButtonElement>("quick-start");
 const cubeCount = el<HTMLSpanElement>("cube-count");
 const contactLink = el<HTMLAnchorElement>("contact-link");
 const releaseBadge = el<HTMLSpanElement>("release-badge");
@@ -90,13 +90,18 @@ const viewStub = el<HTMLDivElement>("view-stub");
 const viewStubTitle = el<HTMLHeadingElement>("view-stub-title");
 const viewStubBody = el<HTMLParagraphElement>("view-stub-body");
 const colourCanvas = el<HTMLCanvasElement>("colour-canvas");
-const colourNote = el<HTMLElement>("colour-note");
+const viewDesc = el<HTMLElement>("view-desc");
 const mapWrap = el<HTMLDivElement>("map-wrap");
+const mapInfo = el<HTMLElement>("map-info");
 const mapHeadline = el<HTMLElement>("map-headline");
 const mapDetail = el<HTMLElement>("map-detail");
 const mapSpanInput = el<HTMLSelectElement>("map-span");
-const mapStepInput = el<HTMLSelectElement>("map-step");
-const findMotionButton = el<HTMLButtonElement>("find-motion");
+const candRun = el<HTMLButtonElement>("cand-run");
+const candStatus = el<HTMLElement>("cand-status");
+const findMore = el<HTMLDetailsElement>("find-more");
+const shareToggle = el<HTMLButtonElement>("share-toggle");
+const shareMenu = el<HTMLDivElement>("share-menu");
+const shareStatus = el<HTMLElement>("share-status");
 const gaiaToggle = el<HTMLInputElement>("gaia-toggle");
 const gaiaNote = el<HTMLParagraphElement>("gaia-note");
 const staticMedian = el<HTMLInputElement>("static-median");
@@ -123,7 +128,6 @@ let panelTab: PanelTab = "spectrum";
 const spectrumPanel = new SpectrumPanel(el<HTMLElement>("spectrum-panel"), {
   onClose: () => {
     writeState({ px: null, py: null, panel: null });
-    soundPixel = null;
     for (const picker of pickers) picker.setSelected(null);
   },
   onTab: (panel) => {
@@ -150,26 +154,16 @@ const simulator = new Simulator(
   },
   { on: state.sim, simp: state.simp },
 );
-const compareView = new CompareView(
-  compareWrap,
-  {
-    stretchFor: (i) => stretchFor(i),
-    gaiaNear: (x, y, a, b, r) => {
-      if (!gaiaData || !slicesMeta[a] || !slicesMeta[b]) return null;
-      const at = (i: number): boolean =>
-        sourcesNear(gaiaData!.sources, gaiaData!.epoch_year, decimalYear(slicesMeta[i].mjd), x, y, r).length > 0;
-      return at(a) || at(b);
-    },
-    openSpectrum: (p) => void pickPixel(p, true),
-  },
-  state.cmp,
-);
+const compareView = new CompareView(compareWrap, { stretchFor: (i) => stretchFor(i) });
+const changePicture = new ChangePicture();
+/** The Colour view shows every date until the visitor plays or drags the timeline; then it builds up date by date. */
+let colourAll = true;
 renderGlossary(el<HTMLElement>("glossary"));
 const candidatePanel = new CandidatePanel({
   jobKey: () => jobKey,
   group: () => (movie ? 0 : group),
-  span: () => Number(mapSpanInput.value),
-  step: () => Number(mapStepInput.value),
+  span: () => mapGrid().span,
+  step: () => mapGrid().step,
   simActive: () => simulator.active,
   npix: () => cubeNpix,
   frameIndex: () => slicesMeta[Number(timeline.value)]?.index ?? null,
@@ -185,26 +179,24 @@ const updatePanel = new UpdatePanel(async (key) => {
   await openJob(key, false);
 });
 const tour = new Tour(el<HTMLElement>("tour-panel"));
-for (const id of ["tour-start", "tour-start-empty"]) el(id).addEventListener("click", () => tour.start());
-// One-minute auto demo, and a one-click way to the fastest mover.
+document.getElementById("tour-start")?.addEventListener("click", () => tour.start());
+// The one-minute demo, and one-press ways to open a test object or the Sky page.
 document.addEventListener("click", (ev) => {
-  const hit = (ev.target as HTMLElement | null)?.closest<HTMLElement>("[data-auto-demo], [data-open-target]");
+  const hit = (ev.target as HTMLElement | null)?.closest<HTMLElement>("[data-auto-demo], [data-open-target], [data-go-sky]");
   if (!hit) return;
-  showScene("cube");
-  if (hit.dataset.autoDemo !== undefined) {
-    tour.start(true);
+  if (hit.dataset.goSky !== undefined) {
+    showScene("globe");
     return;
   }
-  targetSelect.value = hit.dataset.openTarget ?? "";
-  if (!targetSelect.value) return;
-  targetSelect.dispatchEvent(new Event("change"));
-  void build();
+  showScene("cube");
+  if (hit.dataset.autoDemo !== undefined) tour.start(true);
+  else void openTarget(hit.dataset.openTarget ?? "");
 });
-const sonifier = new Sonifier(document.getElementById("sound-toggle") as HTMLButtonElement | null);
-let soundPixel: Pixel | null = null;
 initShare(() => flushState());
 initShortcuts();
 let mapRequest = 0;
+let targetsLoaded: Promise<void> = Promise.resolve();
+let lastScore = "n/a";
 
 let jobKey: string | null = state.job;
 let group = state.group;
@@ -238,14 +230,14 @@ registerOpenJob((key) => {
 });
 let dossierRefresh: (() => void) | null = null;
 const exportCtx = {
-  targetName: () => (targetSelect.selectedOptions[0]?.textContent ?? "").trim() === "Custom coordinates" ? "" : (targetSelect.selectedOptions[0]?.textContent ?? "").trim(),
+  targetName: () => (targetSelect.value ? (targetSelect.selectedOptions[0]?.textContent ?? "").trim() : jobStatus?.target?.name ?? ""),
   simActive: () => simulator.active,
   frames: () => slicesMeta.map((meta, i) => ({ meta, data: sliceData[i] })).filter((f) => f.data),
   npix: () => cubeNpix,
   stretchFor: (i: number) => stretchFor(i),
-  groupLabel: () => (group === 0 ? "16-year movie" : `group D${group}`),
+  groupLabel: () => (movie ? "16-year movie" : group === 0 ? "all pictures" : isWiseDetector(group) ? `WISE W${group - 100}` : `SPHEREx D${group}`),
   velocity: () => ({ vx: Number(vxInput.value) || 0, vy: Number(vyInput.value) || 0 }),
-  score: () => tiltMetrics.querySelector(".metric b")?.textContent ?? "n/a",
+  score: () => lastScore,
   stackAt: (vx: number, vy: number) => {
     if (group === 0) return null;
     const frames = stackFrames();
@@ -256,6 +248,7 @@ const exportCtx = {
   },
   say: (m: string) => {
     el<HTMLElement>("export-status").textContent = m;
+    shareStatus.textContent = m;
   },
 };
 wireExports(exportCtx, { movie: "save-movie", tilt: "save-tilt-img", snap: "tilt-snap", map: "save-map-img", tiltCanvas: "tilt-canvas", mapCanvas: "map-canvas" });
@@ -270,6 +263,19 @@ dossierRefresh = wireDossier({
   velocity: exportCtx.velocity,
   say: exportCtx.say,
 }).refresh;
+el<HTMLButtonElement>("save-frame").addEventListener("click", () => void exportFrame(exportCtx, Number(timeline.value)));
+const setShareOpen = (open: boolean): void => {
+  shareMenu.hidden = !open;
+  shareToggle.setAttribute("aria-expanded", String(open));
+  if (open) shareStatus.textContent = "";
+};
+shareToggle.addEventListener("click", () => setShareOpen(shareMenu.hidden));
+document.addEventListener("click", (ev) => {
+  if (!shareMenu.hidden && !(ev.target as HTMLElement).closest(".deck-share")) setShareOpen(false);
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") setShareOpen(false);
+});
 initScenes();
 initShell();
 initNav();
@@ -301,8 +307,7 @@ async function init(): Promise<void> {
     releaseBadge.textContent = "API offline";
   }
 
-  try {
-    const { targets } = await api.targets();
+  targetsLoaded = api.targets().then(({ targets }) => {
     for (const target of targets) {
       const option = document.createElement("option");
       option.value = target.key;
@@ -311,8 +316,16 @@ async function init(): Promise<void> {
       option.dataset.dec = String(target.dec_deg ?? "");
       targetSelect.appendChild(option);
     }
-  } catch {
-    /* the form still works with explicit coordinates */
+  }).catch(() => {
+    /* the form still works with a typed position */
+  });
+  await targetsLoaded;
+
+  // Old links to the motion map (it now lives under Tools) open the flip book with Find beside it.
+  if (new URLSearchParams(window.location.search).get("view") === "map") {
+    viewInput.value = "blink";
+    writeState({ view: "blink" });
+    reveal(candRun);
   }
 
   if (jobKey) {
@@ -339,11 +352,20 @@ targetSelect.addEventListener("change", () => {
 });
 
 buildButton.addEventListener("click", () => void build());
-quickStart.addEventListener("click", () => {
-  targetSelect.value = "barnard";
+
+/** Open one of the built-in test objects by its key ("barnard", "wise0855", ...). */
+async function openTarget(key: string): Promise<void> {
+  await targetsLoaded;
+  targetSelect.value = key;
+  if (!key || targetSelect.value !== key) {
+    buildStatus.textContent = "The list of test objects did not load (the server may still be starting). Try again in a moment.";
+    emptyState.hidden = false;
+    return;
+  }
   targetSelect.dispatchEvent(new Event("change"));
-  void build();
-});
+  await build();
+}
+window.addEventListener("open-target", (ev) => void openTarget(String((ev as CustomEvent).detail ?? "")));
 
 async function build(): Promise<void> {
   const option = targetSelect.value ? targetSelect.selectedOptions[0] : null;
@@ -362,7 +384,7 @@ async function build(): Promise<void> {
     ra = Number(raInput.value);
     dec = Number(decInput.value);
     if (!Number.isFinite(ra) || !Number.isFinite(dec) || raInput.value === "" || decInput.value === "") {
-      buildStatus.textContent = "Enter both RA and Dec, or pick a named target.";
+      buildStatus.textContent = "Type both RA and Dec, or pick a test object.";
       return;
     }
     body.ra = ra;
@@ -370,29 +392,29 @@ async function build(): Promise<void> {
   }
 
   buildButton.disabled = true;
-  buildStatus.textContent = "Submitting request to the archive…";
+  buildStatus.textContent = "Asking NASA's archive…";
   partialLast = 0;
   try {
     const created = await api.createJob(body);
     jobKey = created.key;
     writeState({ job: jobKey, ra, dec });
-    buildStatus.textContent = "Searching the SPHEREx archive…";
+    buildStatus.textContent = "Looking for pictures of this place…";
     const status = await api.waitForJob(jobKey, (update) => {
       const done = update.progress.done;
       const total = update.progress.total;
       buildStatus.textContent = total > 0
-        ? `${update.phase} — ${done}/${total} frames`
+        ? `${update.phase}: ${done} of ${total} pictures`
         : `${update.phase}…`;
       if (update.status === "running") void partialRefresh(created.key);
     });
     if (status.status === "error") throw new Error(status.error ?? "unknown error");
     await openJob(jobKey, false);
-    buildStatus.textContent = `${status.frames.length} frames aligned.`;
+    buildStatus.textContent = `${status.frames.length} pictures lined up.`;
   } catch (error) {
     const text = (error as Error).message;
     buildStatus.textContent = text.startsWith("429")
       ? text.replace(/^429[^\u2014]*\u2014 /, "").replace(/^\{"detail":"|"\}$/g, "")
-      : isArchiveOffline() ? OFFLINE_BUILD_MESSAGE : `Failed: ${text}`;
+      : isArchiveOffline() ? OFFLINE_BUILD_MESSAGE : `That did not work. ${plainError(text)}`;
   } finally {
     buildButton.disabled = false;
   }
@@ -401,27 +423,51 @@ async function build(): Promise<void> {
 // ---------------------------------------------------------------------------
 // Opening a finished job
 // ---------------------------------------------------------------------------
+/** The part of a server error a visitor can read: no status code, no JSON wrapper. */
+function plainError(text: string): string {
+  return text.replace(/^[a-z ]*failed: /i, "").replace(/^\d+ [^\u2014]*\u2014 /, "").replace(/^\d+\s*/, "")
+    .replace(/^\{"detail":"|"\}$/g, "").slice(0, 200) || "The server did not answer.";
+}
+
+/** No cube on screen: say why, and offer the way back to the saved ones. */
+function showNoCube(message: string): void {
+  jobKey = null;
+  jobStatus = null;
+  writeState({ job: null, px: null, py: null, panel: null });
+  buildStatus.textContent = message;
+  el<HTMLElement>("empty-note").textContent = message;
+  emptyState.hidden = false;
+  buildButton.disabled = false;
+}
+
 async function openJob(key: string, hydrate: boolean): Promise<void> {
-  buildStatus.textContent = "Loading cube…";
-  const status = await api.waitForJob(key, (update) => {
-    buildStatus.textContent = update.status === "done" ? "Loading cube…" : `${update.phase}…`;
-  });
+  buildStatus.textContent = "Opening the cube…";
+  let status: api.JobStatus;
+  try {
+    status = await api.waitForJob(key, (update) => {
+      buildStatus.textContent = update.status === "done" ? "Opening the cube…" : `${update.phase}…`;
+    });
+  } catch (error) {
+    const text = (error as Error).message;
+    showNoCube(/^404/.test(text)
+      ? "This cube is no longer saved on the server. Pick a saved cube on the Sky page, or build it again."
+      : `The cube did not open. ${plainError(text)}`);
+    return;
+  }
   if (status.status === "error") {
-    buildStatus.textContent = `Job failed: ${status.error}`;
+    showNoCube(`This cube could not be built. ${plainError(status.error ?? "")}`);
     return;
   }
   jobKey = key;
   jobStatus = status;
-  setCurrentTarget(status.target);
-  if (!hydrate) spectrumPanel.reset(key);
-  else spectrumPanel.reset(key);
+  spectrumPanel.reset(key);
   gaiaData = null;
   gaiaLoad = null;
   checklistBox.hidden = true;
   tiltRan = false;
   emptyState.hidden = true;
   buildButton.disabled = false;
-  buildStatus.textContent = `${status.frames.length} aligned frames · ${status.groups.length} wavelength groups`;
+  buildStatus.textContent = `${status.frames.length} pictures of ${status.target?.name ?? "this place"} are open.`;
   const refreshError = (status as unknown as { refresh_error?: string }).refresh_error;
   updatePanel.setJob(key, refreshError);
   showTab("dock-controls", "frames");
@@ -432,10 +478,10 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
     if (state.ra === null || state.dec === null) {
       writeState({ ra: status.target.ra_deg, dec: status.target.dec_deg });
     }
-    provFrames.textContent = `${status.frames.length} frames`;
+    provFrames.textContent = String(status.frames.length);
     const masked = status.frames.map((f) => f.masked_fraction).filter(Number.isFinite);
     const mean = masked.length ? masked.reduce((a, b) => a + b, 0) / masked.length : 0;
-    provMasked.textContent = `${(mean * 100).toFixed(1)}% mean`;
+    provMasked.textContent = `${(mean * 100).toFixed(1)}% on average`;
   }
   contactLink.href = `/api/jobs/${encodeURIComponent(key)}/contact_sheet.png`;
   contactLink.hidden = false;
@@ -465,8 +511,8 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
   const pmy = status.target?.pmdec_mas_yr ?? 0;
   useCatalogue.disabled = !(pmx !== 0 || pmy !== 0);
   useCatalogue.title = useCatalogue.disabled
-    ? "No catalogue proper motion is known for this position"
-    : `Catalogue proper motion: ${(pmx / 1000).toFixed(3)} east, ${(pmy / 1000).toFixed(3)} north arcsec/yr`;
+    ? "No star catalogue lists a motion for this place"
+    : `The catalogue says: ${(pmx / 1000).toFixed(2)} east, ${(pmy / 1000).toFixed(2)} north, in arcseconds a year`;
   renderGroupChips(status);
   void ensureGaia();
   const npix = status.grid?.npix ?? cubeNpix;
@@ -477,7 +523,7 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
     writeState({ px: null, py: null, panel: null });
   }
   await loadGroup(group, hydrate ? state.t : 0, hydrate);
-  candidatePanel.reset();
+  resetFind();
   if (hydrate && (state.vx !== 0 || state.vy !== 0)) void runTilt();
   walkthrough(viewInput.value);
 }
@@ -486,63 +532,76 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
 async function pickPixel(p: Pixel, scroll: boolean, tab?: PanelTab): Promise<void> {
   if (!jobKey) return;
   if (simulator.active) {
-    tiltStatus.textContent = "Spectrum and light curve are measured on real data only. Turn the simulator off to use them.";
+    tiltStatus.textContent = "Spectra are measured on real pictures only. Turn Practise mode off to use them.";
     return;
   }
   const panel = tab ?? panelTab;
   panelTab = panel;
   writeState({ px: p.x, py: p.y, panel });
-  soundPixel = p;
   for (const picker of pickers) picker.setSelected(p);
   const done = spectrumPanel.show(p.x, p.y, panel);
-  if (scroll) el<HTMLElement>("spectrum-panel").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  void scroll;
   await done;
 }
 
 
 function renderGroupChips(status: api.JobStatus): void {
   groupPicker.replaceChildren();
-  const total = status.frames.length;
-  const entries: Array<{ value: number; label: string; movie: boolean; title?: string }> = [
-    { value: 0, label: `All bands (${total})`, movie: false,
-      title: "Every frame, SPHEREx and WISE together. Units differ, so tilt and motion map need one band." },
-    ...status.groups.map((g) => ({ value: g.detector, label: groupLabel(g), movie: false })),
-  ];
-  // The 16-year movie: one chip per WISE band that has SPHEREx frames to follow it.
-  for (const g of status.groups.filter((x) => isWiseDetector(x.detector))) {
+  type Entry = { value: number; label: string; movie: boolean; title?: string };
+  const all = status.frames.map((meta) => ({ meta }));
+  const movies: Entry[] = status.groups.filter((g) => isWiseDetector(g.detector)).map((g) => {
     const band = g.detector as MovieBand;
-    const n = selectMovieFrames(status.frames.map((meta) => ({ meta })), band).length;
-    entries.push({
-      value: g.detector,
-      label: `16-year movie ${band === DET_W2 ? "W2 → D6" : "W1 → SPHEREx"} (${n})`,
-      movie: true,
-      title: movieDescription(band),
-    });
+    return {
+      value: g.detector, movie: true, title: movieDescription(band),
+      label: `${band === DET_W2 ? "4.6" : "3.4"} µm (${selectMovieFrames(all, band).length})`,
+    };
+  });
+  const spherex: Entry[] = status.groups.filter((g) => !isWiseDetector(g.detector))
+    .map((g) => ({ value: g.detector, movie: false, label: `D${g.detector} (${g.count})`, title: groupLabel(g) }));
+  const wise: Entry[] = status.groups.filter((g) => isWiseDetector(g.detector))
+    .map((g) => ({ value: g.detector, movie: false, label: `${g.detector === DET_W2 ? "4.6" : "3.4"} µm (${g.count})`, title: groupLabel(g) }));
+  const rows: Array<[string, Entry[]]> = [
+    ["16 years: WISE, then SPHEREx", movies],
+    ["SPHEREx only, 2025 on", spherex],
+    ["WISE only, 2010 to 2024", wise],
+    ["Everything", [{ value: 0, movie: false, label: `All ${status.frames.length} pictures`, title: "For browsing only: the two telescopes use different units, so the tools need one set." }]],
+  ];
+  const sync = (): void => {
+    for (const chip of groupPicker.querySelectorAll("button")) {
+      chip.setAttribute("aria-pressed", String(chip.dataset.value === String(group) && (chip.dataset.movie === "1") === movie));
+    }
+  };
+  for (const [title, entries] of rows) {
+    if (entries.length === 0) continue;
+    const row = document.createElement("div");
+    row.className = "chip-row";
+    const name = document.createElement("span");
+    name.className = "chip-row-name";
+    name.textContent = title;
+    const chips = document.createElement("div");
+    chips.className = "chips";
+    for (const entry of entries) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "chip";
+      button.textContent = entry.label;
+      if (entry.title) button.title = entry.title;
+      button.dataset.value = String(entry.value);
+      button.dataset.movie = entry.movie ? "1" : "0";
+      button.addEventListener("click", () => {
+        group = entry.value;
+        movie = entry.movie;
+        writeState({ group, movie });
+        sync();
+        checklistBox.hidden = true;
+        void loadGroup(group, 0, false);
+      });
+      chips.appendChild(button);
+    }
+    row.append(name, chips);
+    groupPicker.appendChild(row);
   }
-  for (const entry of entries) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = entry.movie ? "chip movie" : "chip";
-    button.textContent = entry.label;
-    if (entry.title) button.title = entry.title;
-    button.dataset.value = String(entry.value);
-    button.dataset.movie = entry.movie ? "1" : "0";
-    button.setAttribute("aria-pressed", String(entry.value === group && entry.movie === movie));
-    button.addEventListener("click", () => {
-      group = entry.value;
-      movie = entry.movie;
-      writeState({ group, movie });
-      for (const chip of groupPicker.querySelectorAll("button")) {
-        chip.setAttribute(
-          "aria-pressed",
-          String(chip.dataset.value === String(group) && (chip.dataset.movie === "1") === movie),
-        );
-      }
-      checklistBox.hidden = true;
-      void loadGroup(group, 0, false);
-    });
-    groupPicker.appendChild(button);
-  }
+  sync();
 }
 
 /** Show the same chips from raw in-progress frames, so the cube fills in live. */
@@ -550,10 +609,10 @@ function renderFrameChips(frames: api.FrameMeta[], active: number): void {
   const counts = new Map<number, number>();
   for (const f of frames) counts.set(f.detector, (counts.get(f.detector) ?? 0) + 1);
   const entries = [
-    { value: 0, label: `All bands (${frames.length})` },
+    { value: 0, label: `All (${frames.length})` },
     ...[...counts.entries()].sort((a, b) => a[0] - b[0]).map(([detector, n]) => ({
       value: detector,
-      label: isWiseDetector(detector) ? `WISE ${detector === DET_W2 ? "W2" : "W1"} (${n})` : `D${detector} (${n})`,
+      label: isWiseDetector(detector) ? `WISE ${detector === DET_W2 ? "4.6" : "3.4"} µm (${n})` : `D${detector} (${n})`,
     })),
   ];
   groupPicker.replaceChildren();
@@ -604,7 +663,7 @@ async function loadGroup(detector: number, startAt: number, quiet: boolean): Pro
   if (!jobKey) return;
   if (!quiet) {
     stopPlayback();
-    sliceLabel.textContent = "Fetching frames…";
+    sliceLabel.textContent = "Loading the pictures…";
   }
   try {
     const asMovie = movie && isWiseDetector(detector);
@@ -615,25 +674,22 @@ async function loadGroup(detector: number, startAt: number, quiet: boolean): Pro
     realFrames = asMovie ? selectMovieFrames(cube.frames, detector as MovieBand) : cube.frames;
     frameSlices = plantedFrames();
     mountFrames(Number.isFinite(startAt) ? startAt : 0, !quiet);
-    if (!quiet) candidatePanel.reset();
+    if (!quiet) resetFind();
 
     const tiltReady = detector !== 0;
     runTiltButton.disabled = !tiltReady;
-    findMotionButton.disabled = !tiltReady;
     tiltStatus.textContent = !tiltReady
-      ? "Pick a single wavelength group to run a physically meaningful tilt. SPHEREx and WISE units differ, so All bands is not stacked."
+      ? ONE_SET
       : asMovie
-        ? "Ready. The tilt stacks the WISE epochs of this band only (units differ from SPHEREx). Positive vx is east, positive vy is north."
-        : "Ready. Positive vx is east, positive vy is north.";
+        ? "Ready. Only the WISE pictures of this set are added up (SPHEREx uses different units)."
+        : "";
     groupNote.textContent = asMovie
-      ? `16-year movie: ${movieDescription(detector as MovieBand)}. Each frame has its own brightness stretch, so the units do not matter for viewing.`
+      ? "WISE pictures from 2010 to 2024, then SPHEREx pictures in the same infrared colour. Each picture has its own brightness scale."
       : detector === 0
-        ? "All bands mixes SPHEREx (MJy/sr) and WISE (nanomaggies): good for browsing only."
-        : isWiseDetector(detector)
-          ? "WISE frames are unWISE time-resolved coadds in nanomaggies, not MJy/sr."
-          : "";
+        ? "Both telescopes together: good for browsing. The tools need one set."
+        : "";
   } catch (error) {
-    sliceLabel.textContent = `Could not load frames: ${(error as Error).message}`;
+    sliceLabel.textContent = `The pictures did not load. ${plainError((error as Error).message)}`;
   }
 }
 
@@ -654,7 +710,7 @@ function mountFrames(startAt: number, reframe = true): void {
       : `${sourceName(f.meta)} · ${f.meta.wavelength_um.toFixed(2)} µm`,
   }));
   if (slices.length === 0) {
-    sliceLabel.textContent = "No frames in this group.";
+    sliceLabel.textContent = "There are no pictures in this set.";
     return;
   }
 
@@ -675,13 +731,15 @@ function mountFrames(startAt: number, reframe = true): void {
   frameRanges = movie || group === 0 ? sliceData.map((d) => ownStretch(d)) : null;
 
   compareView.setFrames(ordered, cubeNpix, pendingPair?.a ?? null, pendingPair?.b ?? null);
+  changePicture.setFrames(ordered.map((f) => ({ mjd: f.meta.mjd, data: f.data, source: f.meta.source })), cubeNpix);
+  colourAll = true;
   pendingPair = null;
   cubeView.setSlices(slices, cubeNpix, reframe);
   timeline.max = String(slices.length - 1);
   const index = Math.max(0, Math.min(slices.length - 1, Math.round(startAt)));
   setActive(index);
   applyViewMode();
-  cubeCount.textContent = `${slices.length} ${movie ? "movie frames" : "epochs"} · ${cubeNpix}×${cubeNpix} px`;
+  cubeCount.textContent = `${slices.length} pictures`;
 
   const waves = slicesMeta.map((m) => m.wavelength_um);
   const waveLo = Math.min(...waves);
@@ -710,13 +768,7 @@ function setActive(index: number): void {
   updateSliceLabel(index);
   if (viewInput.value === "blink") drawBlink(index);
   candidatePanel.frameChanged();
-  if (sonifier.enabled && sliceData[index]) {
-    // Brightness at the marked pixel (or the centre of the image), on this image's own scale.
-    const p = soundPixel ?? { x: cubeNpix >> 1, y: cubeNpix >> 1 };
-    const v = sliceData[index][p.y * cubeNpix + p.x];
-    const s = stretchFor(index);
-    sonifier.ping(Number.isFinite(v) ? (v - s.lo) / (s.hi - s.lo || 1) : null);
-  }
+  if (viewInput.value === "colour") drawColour();
   writeState({ t: index, axis: axisInput.value as Axis });
 }
 
@@ -743,6 +795,7 @@ function updateSliceLabel(index: number): void {
 // Playback and view mode
 // ---------------------------------------------------------------------------
 timeline.addEventListener("input", () => {
+  colourAll = false;
   setActive(Number(timeline.value));
 });
 
@@ -765,6 +818,7 @@ function startPlayback(): void {
   const delay = 1000 / Math.max(1, Number(speedInput.value));
   playButton.textContent = "Pause";
   playButton.setAttribute("aria-label", "Pause");
+  colourAll = false;
   playTimer = window.setInterval(() => {
     const next = (Number(timeline.value) + 1) % (Number(timeline.max) + 1);
     setActive(next);
@@ -790,9 +844,27 @@ viewInput.addEventListener("change", () => {
   applyViewMode();
 });
 
+/** One line under the view buttons: what this view shows and what to do with it. */
+const VIEW_DESC: Record<View, string> = {
+  cube: "Every picture of this patch of sky, stacked by date. Drag to turn it. Press Play to run through the years.",
+  blink: "One picture at a time, like a flip book. Press Play and watch for the dot that jumps. Press any spot to see its spectrum.",
+  colour: "Grey is the sky that never changes. Colour marks what appeared: blue early, orange late. A mover draws a blue-to-orange line. Press Play to watch it build.",
+  compare: "Two dates side by side, and a third picture that shows only what changed between them.",
+};
+
+function drawColour(): void {
+  const byDate = movie || axisInput.value === "time";
+  const until = colourAll || !byDate ? undefined : slicesMeta[Number(timeline.value)]?.mjd;
+  if (changePicture.draw(colourCanvas, until) === 0) {
+    colourCanvas.hidden = true;
+    showStub("Colour needs more dates", "This set has fewer than two dates. Pick another set under Controls, Pictures.");
+  }
+}
+
 function applyViewMode(): void {
   const view = viewInput.value as View;
   syncView();
+  viewDesc.textContent = frameSlices.length > 0 ? VIEW_DESC[view] : "";
   if (frameSlices.length > 0) walkthrough(view);
   window.requestAnimationFrame(() => {
     pickers.forEach((p) => p.refresh());
@@ -802,26 +874,17 @@ function applyViewMode(): void {
   blinkCanvas.hidden = view !== "blink";
   viewStub.hidden = true;
   colourCanvas.hidden = view !== "colour";
-  colourNote.hidden = view !== "colour";
-  mapWrap.hidden = view !== "map";
   compareWrap.hidden = view !== "compare";
   if (view === "compare") {
     if (frameSlices.length < 2) {
       compareWrap.hidden = true;
-      showStub("Compare epochs", "It needs at least two epochs in this group.");
+      showStub("Compare needs two dates", "This set has only one picture. Pick another set under Controls, Pictures.");
     } else {
       compareView.render();
     }
   } else if (view === "colour") {
-    const frames = frameSlices.map((f) => ({ mjd: f.meta.mjd, data: f.data }));
-    // Mixed units (the movie, All bands): each frame is scaled on its own before the blend.
-    if (!drawColourComposite(frames, cubeNpix, colourCanvas, movie || group === 0)) {
-      colourCanvas.hidden = true;
-      colourNote.hidden = true;
-      showStub("Colour view", "It needs at least two epochs with different dates in this group.");
-    }
-  } else if (view === "map") {
-    void showMap();
+    colourAll = true;
+    drawColour();
   } else if (view === "blink" && sliceData.length > 0) {
     drawBlink(Number(timeline.value));
   }
@@ -834,26 +897,54 @@ function showStub(title: string, body: string): void {
 }
 
 // ---------------------------------------------------------------------------
-// Motion map
+// Find: the motion map and the ranked candidates, in the Tools panel
 // ---------------------------------------------------------------------------
-findMotionButton.addEventListener("click", () => void findBestMotion());
-for (const input of [mapSpanInput, mapStepInput]) {
-  input.addEventListener("change", () => {
-    if (viewInput.value === "map") void showMap();
-  });
+const ONE_SET = "Choose one set of pictures first (Controls, Pictures). WISE and SPHEREx use different units, so they cannot be added together.";
+
+/** Years between the first and the last picture that the tools add up. */
+function baselineYears(): number {
+  const used = realFrames.filter((f) => f.meta.detector === group);
+  if (used.length < 2) return 1;
+  const mjds = used.map((f) => f.meta.mjd);
+  return Math.max(0.25, (Math.max(...mjds) - Math.min(...mjds)) / 365.25);
 }
 
-async function loadMap(): Promise<api.MotionMapResult> {
-  if (!jobKey) throw new Error("build a cube first");
+/**
+ * The grid of motions to try.  Two neighbouring squares must differ by at most about two pixels of
+ * slide over the whole baseline, or a mover can fall between them; the server allows 49 squares a side.
+ */
+function mapGrid(): { span: number; step: number; coarse: boolean } {
   const span = Number(mapSpanInput.value);
-  const step = Number(mapStepInput.value);
+  const want = (2 * (jobStatus?.grid?.pixscale_arcsec ?? 6.15)) / baselineYears();
+  let step = span / 12;
+  if (step > want) step = span / 24;
+  return { span, step, coarse: step > want * 1.5 };
+}
+
+function resetFind(): void {
+  mapRequest++;
+  mapWrap.hidden = true;
+  mapInfo.hidden = true;
+  findMore.hidden = true;
+  candidatePanel.reset();
+  const ok = !!jobKey && group !== 0;
+  candRun.disabled = !ok;
+  candStatus.textContent = !jobKey ? "Open a cube first." : group === 0 ? ONE_SET : "";
+}
+
+candRun.addEventListener("click", () => void runFind());
+mapSpanInput.addEventListener("change", () => resetFind());
+
+async function loadMap(): Promise<api.MotionMapResult> {
+  if (!jobKey) throw new Error("open a cube first");
+  const { span, step } = mapGrid();
   const id = `${jobKey}|${group}|${span}|${step}|${frameSlices.length}|${simulator.signature()}`;
   const cached = mapCache.get(id);
   if (cached) return cached;
   const ctx = simContext();
   const result = simulator.active && ctx
     ? await clientMotionMap(stackFrames(), ctx.npix, ctx.pixscale, span, step, (f) => {
-        tiltStatus.textContent = `Simulated frames: scanning velocities in the browser… ${Math.round(f * 100)}%`;
+        candStatus.textContent = `Trying every motion in your browser… ${Math.round(f * 100)}%`;
       })
     : await api.fetchMotionMap(jobKey, group, span, step);
   mapCache.set(id, result);
@@ -864,48 +955,36 @@ function pickedVelocity(): { vx: number; vy: number } {
   return { vx: Number(vxInput.value) || 0, vy: Number(vyInput.value) || 0 };
 }
 
-async function showMap(): Promise<void> {
+/** Search: try every motion, show the map and what it means, then list the best candidates. */
+async function runFind(): Promise<void> {
+  if (!jobKey || group === 0) return;
   const request = ++mapRequest;
-  if (!jobKey || group === 0) {
-    mapWrap.hidden = true;
-    showStub("Motion map", "Pick a single wavelength group: the map needs frames of one detector.");
-    return;
-  }
-  mapWrap.hidden = true;
-  showStub("Motion map", "Shifting and stacking the frames over a grid of velocities…");
+  candRun.disabled = true;
+  candStatus.textContent = "Trying every speed and direction. This takes a few seconds…";
   try {
     const result = await loadMap();
-    if (request !== mapRequest || viewInput.value !== "map") return;
-    const text = describeMap(result);
+    if (request !== mapRequest) return;
+    const t = jobStatus?.target;
+    const known = t && (t.pmra_mas_yr || t.pmdec_mas_yr)
+      ? { name: t.name, vx: (t.pmra_mas_yr ?? 0) / 1000, vy: (t.pmdec_mas_yr ?? 0) / 1000 }
+      : null;
+    const text = describeMap(result, { coarse: mapGrid().coarse, known, simulated: simulator.active });
     mapHeadline.textContent = text.headline;
     mapDetail.textContent = text.detail;
-    viewStub.hidden = true;
     mapWrap.hidden = false;
+    mapInfo.hidden = false;
+    findMore.hidden = false;
     mapView.setResult(result, pickedVelocity());
+    candStatus.textContent = "";
+    if (simulator.active) {
+      candStatus.textContent = "Practise mode: press the brightest square, then press Check my answer under Practise.";
+    } else {
+      await candidatePanel.search();
+    }
   } catch (error) {
-    if (request === mapRequest) showStub("Motion map", (error as Error).message);
-  }
-}
-
-async function findBestMotion(): Promise<void> {
-  if (!jobKey || group === 0) {
-    tiltStatus.textContent = "Pick a single wavelength group first.";
-    return;
-  }
-  findMotionButton.disabled = true;
-  tiltStatus.textContent = "Scanning velocities (fixed sources suppressed)…";
-  try {
-    const result = await loadMap();
-    vxInput.value = String(result.bestVx);
-    vyInput.value = String(result.bestVy);
-    if (viewInput.value === "map") void showMap();
-    else mapView.setResult(result, { vx: result.bestVx, vy: result.bestVy });
-    await runTilt();
-    tiltStatus.textContent = `${describeMap(result).detail} Candidate only, not a detection.`;
-  } catch (error) {
-    tiltStatus.textContent = (error as Error).message;
+    if (request === mapRequest) candStatus.textContent = plainError((error as Error).message);
   } finally {
-    findMotionButton.disabled = group === 0;
+    if (request === mapRequest) candRun.disabled = false;
   }
 }
 
@@ -921,11 +1000,11 @@ resetTiltButton.addEventListener("click", () => {
 
 async function runTilt(): Promise<void> {
   if (!jobKey) {
-    tiltStatus.textContent = "Build a cube first.";
+    tiltStatus.textContent = "Open a cube first.";
     return;
   }
   if (group === 0) {
-    tiltStatus.textContent = "Pick a single wavelength group to run the tilt.";
+    tiltStatus.textContent = ONE_SET;
     return;
   }
   const vx = Math.max(-60, Math.min(60, Number(vxInput.value) || 0));
@@ -936,7 +1015,7 @@ async function runTilt(): Promise<void> {
 
   runTiltButton.disabled = true;
   window.dispatchEvent(new CustomEvent("tilt-start"));
-  tiltStatus.textContent = "Shifting every frame and summing…";
+  tiltStatus.textContent = "Sliding the pictures and adding them up…";
   try {
     const mode = staticMedian.checked ? "median" : "none";
     writeState({ static: mode });
@@ -959,20 +1038,17 @@ async function runTilt(): Promise<void> {
     }
 
     const ratio = still.score > 0 && Number.isFinite(moved.score) ? moved.score / still.score : NaN;
-    const quality = !Number.isFinite(ratio)
-      ? "n/a"
-      : ratio >= 1.4 ? "strong alignment" : ratio >= 1.15 ? "moderate alignment" : "weak alignment";
     window.dispatchEvent(new CustomEvent("tilt-result", { detail: { vx, vy, ratio } }));
-    tiltCaption.textContent =
-      `v = (${vx.toFixed(1)}, ${vy.toFixed(1)}) arcsec/yr · ${moved.shifts.length} frames`;
+    const speed = Math.hypot(vx, vy);
+    tiltCaption.textContent = speed > 0 ? `Lined up: ${speed.toFixed(1)}″ a year, ${compass(vx, vy)}` : "Lined up: no motion";
+    lastScore = moved.score.toFixed(1);
 
     tiltMetrics.innerHTML = "";
+    const verdict = !Number.isFinite(ratio) || speed === 0 ? "" : ratio >= 1.4 ? "Much sharper" : ratio >= 1.15 ? "A little sharper" : "Not sharper";
     const cards: Array<[string, string]> = [
-      ["Peak score", moved.score.toFixed(1)],
-      ["vs v = 0", Number.isFinite(ratio) ? `${ratio.toFixed(2)}× ${quality}` : "n/a"],
-      ["Frames stacked", String(moved.shifts.length)],
-      ["Max shift", maxShift(moved.shifts)],
-      ["Fixed stars", mode === "median" ? "removed" : "kept"],
+      [speed === 0 || !Number.isFinite(ratio) ? "no motion chosen" : `${ratio.toFixed(2)}× the sharpness with no motion`, verdict || "—"],
+      ["pictures added", String(moved.shifts.length)],
+      ["furthest slide", maxShift(moved.shifts)],
     ];
     for (const [label, value] of cards) {
       const div = document.createElement("div");
@@ -984,8 +1060,7 @@ async function runTilt(): Promise<void> {
       div.append(b, span);
       tiltMetrics.appendChild(div);
     }
-    tiltStatus.textContent =
-      "Candidate motion only. A high score is not a detection; real moving objects need cross-matching in several bands and a catalogue check.";
+    tiltStatus.textContent = "A sharp dot in the ring is a candidate, not a discovery. Open Checks below to test it.";
 
     const gaia = await ensureGaia();
     const sorted = [...stackFrames].sort((a, b) => a.meta.mjd - b.meta.mjd);
@@ -1004,7 +1079,7 @@ async function runTilt(): Promise<void> {
       }),
     );
   } catch (error) {
-    tiltStatus.textContent = `Tilt failed: ${(error as Error).message}`;
+    tiltStatus.textContent = `That did not work. ${plainError((error as Error).message)}`;
   } finally {
     runTiltButton.disabled = false;
   }
@@ -1028,11 +1103,11 @@ staticMedian.addEventListener("change", () => {
 async function runCatalogueMotion(): Promise<void> {
   const target = jobStatus?.target;
   if (!target || !(target.pmra_mas_yr || target.pmdec_mas_yr)) {
-    tiltStatus.textContent = "No catalogue proper motion is known for this target.";
+    tiltStatus.textContent = "No star catalogue lists a motion for this place.";
     return;
   }
   if (group === 0) {
-    tiltStatus.textContent = "Pick a single wavelength group first (for example WISE W2).";
+    tiltStatus.textContent = ONE_SET;
     return;
   }
   // mas/yr to arcsec/yr; vx is east-positive (pmra already includes cos dec), vy is north.
@@ -1040,7 +1115,7 @@ async function runCatalogueMotion(): Promise<void> {
   vyInput.value = String(Math.round(((target.pmdec_mas_yr ?? 0) / 1000) * 1000) / 1000);
   await runTilt();
   tiltStatus.textContent =
-    `Catalogue motion of ${target.name}: (${vxInput.value}, ${vyInput.value}) arcsec/yr. Candidate only: a bright spot here is a check, not a detection.`;
+    `This is the motion star catalogues give for ${target.name}. A sharp dot in the ring shows the method works.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -1069,13 +1144,13 @@ function ensureGaia(): Promise<api.GaiaResult | null> {
       gaiaData = result;
       for (const overlay of [blinkGaia, tiltGaia, zeroGaia]) overlay.setSources(result.sources, result.epoch_year);
       applyGaiaEnabled();
-      gaiaNote.textContent = `${result.n} Gaia DR3 sources in the field (from the ${result.limit} brightest in the cone, so faint stars may be missing). Positions follow their catalogue motion.`;
+      gaiaNote.textContent = `${result.n} stars from the Gaia catalogue are in this patch (the brightest ${result.limit} at most, so faint ones may be missing).`;
       const index = Number(timeline.value);
       if (viewInput.value === "blink" && sliceData[index]) drawBlink(index);
       return result;
     })
     .catch((error: Error) => {
-      if (key === jobKey) gaiaNote.textContent = `Gaia stars unavailable: ${error.message.slice(0, 120)}`;
+      if (key === jobKey) gaiaNote.textContent = `The Gaia catalogue did not answer, so no rings are drawn. ${plainError(error.message)}`;
       return null;
     });
   gaiaLoad = { key, promise };
@@ -1093,8 +1168,8 @@ function simContext(): { npix: number; pixscale: number; spanYears: number; mapS
     npix: cubeNpix,
     pixscale: jobStatus?.grid?.pixscale_arcsec ?? 6.15,
     spanYears: (Math.max(...mjds) - Math.min(...mjds)) / 365.25,
-    mapSpan: Number(mapSpanInput.value),
-    mapStep: Number(mapStepInput.value),
+    mapSpan: mapGrid().span,
+    mapStep: mapGrid().step,
   };
 }
 
@@ -1127,14 +1202,13 @@ async function stackBoth(vx: number, vy: number, mode: "median" | "none"): Promi
 /** The simulator was switched, or its parameters changed: swap real and planted frames and redraw. */
 function applySim(): void {
   dossierRefresh?.();
-  candidatePanel.reset();
+  resetFind();
   if (realFrames.length === 0) return;
   pendingPair = compareView.pair;
   frameSlices = plantedFrames();
   mountFrames(Number(timeline.value), false);
   tiltStatus.textContent = simulator.active
-    ? "Simulated frames: tilt and motion map run in your browser, not on the server."
-    : "Real data restored.";
+    ? "Practise mode: these pictures hold a made-up object. The tools run in your browser."
+    : "Back to the real pictures.";
   if (tiltRan && group !== 0) void runTilt();
-  if (viewInput.value === "map") void showMap();
 }

@@ -227,10 +227,12 @@ def start_auto_refresh() -> bool:
 
 # ------------------------------------------------------------------ API
 @router.get("/api/jobs/{key}/updates")
-def job_updates(key: str, fresh: bool = Query(False)) -> dict:
+def job_updates(key: str, request: Request, fresh: bool = Query(False)) -> dict:
     """Does the archive hold images newer than this cube?"""
     if not _KEY_RE.fullmatch(key) or jobs.manager.get(key) is None:
         raise HTTPException(404, "job not found")
+    if fresh:   # a forced check asks the archive again, so it is counted like a search
+        service.enforce_analysis_limit(request)
     if service.archive_ok() is False:
         # Fail fast: the TAP client retries for a long time when the archive is down.
         if not fresh:   # the quiet check a page makes when it opens a cube
@@ -255,6 +257,9 @@ def job_refresh(key: str, request: Request) -> dict:
         raise HTTPException(404, "job not found")
     if job.status().get("status") in ("queued", "running"):
         return {"key": key, "status": job.status().get("status")}
+    if not service.may_rebuild(request):
+        raise HTTPException(403, "Saved cubes are updated by the site's maintainers. "
+                                 "The cube was not changed.")
     if service.archive_ok() is False:
         raise HTTPException(503, "The archive does not answer right now. The cube was not changed.")
     wait = service.limiter.check(service.client_ip(request))

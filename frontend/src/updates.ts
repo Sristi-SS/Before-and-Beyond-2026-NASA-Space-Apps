@@ -1,6 +1,7 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
 // "New images" box in the Data tab: ask the archive for images newer than this cube, and rebuild.
 import * as api from "./api";
+import { isRefreshLocked } from "./statusbadge";
 
 const el = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
@@ -15,6 +16,9 @@ export class UpdatePanel {
   constructor(private readonly reopen: (key: string) => Promise<void>) {
     this.check.addEventListener("click", () => void this.run(true));
     this.apply.addEventListener("click", () => void this.rebuild());
+    const lock = (): void => { this.apply.hidden = isRefreshLocked(); };
+    window.addEventListener("status:changed", lock);
+    lock();
   }
 
   /** A cube was opened: look for news in the background (quietly; the archive may be offline). */
@@ -54,7 +58,9 @@ export class UpdatePanel {
       this.dot.hidden = !info.has_news;
       const extra = info.new_collections?.length ? ` New data release seen: ${info.new_collections.join(", ")}.` : "";
       this.status.textContent = info.has_news
-        ? `The archive has newer images of this position. Press Update cube to add them.${extra}`
+        ? isRefreshLocked()
+          ? `The archive has newer pictures of this place. Saved cubes are updated by the site's maintainers.${extra}`
+          : `The archive has newer pictures of this place. Press Update cube to add them.${extra}`
         : `This cube is up to date (built ${info.built_date ?? "earlier"}).${extra}`;
     } catch (error) {
       if (loud && key === this.key) {

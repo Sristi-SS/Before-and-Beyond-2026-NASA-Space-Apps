@@ -15,10 +15,12 @@ from typing import Optional
 
 import numpy as np
 from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from . import (cache, candidates, config, extras, group, hardware, jobs, refresh, resolve,
                service, spherex, tilt)
@@ -59,6 +61,24 @@ def _public_status(job: jobs.Job) -> dict:
     return state
 
 
+def _json_safe(value):
+    """NaN and Infinity are not JSON; say them as text so an error answer can be sent."""
+    if isinstance(value, float) and not math.isfinite(value):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    return value
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # A body such as {"ra": NaN} is echoed in the error; without this the 422 answer itself
+    # failed to encode and the caller got a 500 or a dropped connection.
+    return JSONResponse(status_code=422, content={"detail": _json_safe(jsonable_encoder(exc.errors()))})
+
+
 app.include_router(extras.router)
 app.include_router(service.router)
 app.include_router(hardware.router)
@@ -69,6 +89,8 @@ app.add_middleware(service.JsonGZip)
 
 
 class JobRequest(BaseModel):
+    model_config = ConfigDict(allow_inf_nan=False)
+
     name: Optional[str] = Field(None, max_length=80)
     ra: Optional[float] = Field(None, ge=0.0, le=360.0)
     dec: Optional[float] = Field(None, ge=-90.0, le=90.0)
@@ -270,15 +292,21 @@ def motion_map(
     both ascending from ``-span`` to ``+span`` (vx positive = east).
     """
     _check_detector(detector)
+    try:
+        tilt.check_grid(span, step)        # refuse an oversized grid before any work
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     service.enforce_analysis_limit(request)
     cube, meta = _load_frames(key, detector)
     if cube.shape[0] < 3:
         raise HTTPException(400, "the motion map needs at least 3 frames")
-    grid = _job(key).status().get("grid", {})
+    state = _job(key).status()
+    grid = state.get("grid", {})
     pixscale = float(grid.get("pixscale_arcsec", config.DEFAULT_PIXSCALE))
+    memo = (key, detector, float(span), float(step), int(cube.shape[0]), state.get("updated"))
     try:
-        mm = tilt.motion_map(list(cube), [m["mjd"] for m in meta], pixscale,
-                             span=span, step=step)
+        with service.heavy_slot():
+            mm = tilt.motion_map_cached(memo, list(cube), [m["mjd"] for m in meta], pixscale, span, step)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
     return Response(
@@ -296,6 +324,8 @@ def motion_map(
             "X-Best-Y": str(mm.best_xy[1]),
             "X-Npix": str(cube.shape[1]),
             "X-Nsl": str(cube.shape[0]),
+            # A finished cube gives the same map every time, so browsers may keep it.
+            "Cache-Control": "public, max-age=3600" if state.get("status") == "done" else "no-store",
         },
     )
 

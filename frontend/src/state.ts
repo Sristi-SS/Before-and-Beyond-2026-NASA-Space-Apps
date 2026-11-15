@@ -1,13 +1,12 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
 export type Axis = "time" | "wave";
 export type StaticMode = "median" | "none";
-export type View = "cube" | "blink" | "colour" | "map" | "compare";
-export type CmpMode = "side" | "swipe" | "fade" | "diff";
+export type View = "cube" | "blink" | "colour" | "compare";
 export type Panel = "spectrum" | "pulse";
-export type Scene = "globe" | "cube" | "orbit";
+export type Scene = "globe" | "cube";
 
 export interface UrlState {
-  /** Which of the three scenes is showing.  Default: cube when a job or coordinates are in the URL, else globe. */
+  /** Which of the two pages is showing.  Default: cube when a job or coordinates are in the URL, else globe. */
   scene: Scene;
   job: string | null;
   ra: number | null;
@@ -29,10 +28,9 @@ export interface UrlState {
   px: number | null;
   py: number | null;
   panel: Panel | null;
-  /** Compare view: epoch indices (into the current group, time order) and display mode. */
+  /** Compare view: the two pictures (indices into the current group, time order). */
   a: number | null;
   b: number | null;
-  cmp: CmpMode;
   /** Simulator test mode.  A link with sim=1 always shows the SIMULATED banner. */
   sim: boolean;
   /** Visible simulator parameters "brightness,x,y,vx,vy" (never written while a hidden planet is active). */
@@ -40,9 +38,8 @@ export interface UrlState {
 }
 
 const AXES: Axis[] = ["time", "wave"];
-const VIEWS: View[] = ["cube", "blink", "colour", "map", "compare"];
-const CMPS: CmpMode[] = ["side", "swipe", "fade", "diff"];
-const SCENES: Scene[] = ["globe", "cube", "orbit"];
+const VIEWS: View[] = ["cube", "blink", "colour", "compare"];
+const SCENES: Scene[] = ["globe", "cube"];
 
 function flag(raw: string | null, fallback: boolean): boolean {
   if (raw === null) return fallback;
@@ -92,7 +89,6 @@ export function readState(): UrlState {
     ...readPixel(p),
     a: p.has("a") ? Math.max(0, Math.round(num(p.get("a"), 0))) : null,
     b: p.has("b") ? Math.max(0, Math.round(num(p.get("b"), 0))) : null,
-    cmp: CMPS.includes(p.get("cmp") as CmpMode) ? (p.get("cmp") as CmpMode) : "side",
     sim: flag(p.get("sim"), false),
     simp: /^[-\d.,e]+$/i.test(p.get("simp") ?? "") ? p.get("simp") : null,
   };
@@ -143,7 +139,6 @@ export function flushState(): void {
   }
   if (next.a !== null) p.set("a", String(next.a));
   if (next.b !== null) p.set("b", String(next.b));
-  if (next.view === "compare") p.set("cmp", next.cmp);
   if (next.sim) {
     p.set("sim", "1");
     if (next.simp) p.set("simp", next.simp);

@@ -1,27 +1,16 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
-// The three connected scenes: 1 sky globe (landing), 2 time cube (the workspace in main.ts), 3 orbit view.
-// This module owns scene switching, the URL parameter scene=globe|cube|orbit, and the globe's side panel.
+// The two pages: the sky globe (landing) and the time cube (the workspace in main.ts).
+// This module owns page switching, the URL parameter scene=globe|cube, and the globe's side panel.
+// ("Why it moves" used to be a third page; it is now the second card of the intro, see whymoves.ts.)
 import * as api from "./api";
 import { formatRaDec, Globe, separationDeg, type Pin } from "./globe";
-import { OrbitView, type OrbitTarget } from "./orbit";
 import { flushState, readState, writeState, type Scene } from "./state";
 
 let openJobFn: ((key: string) => void) | null = null;
-let currentTarget: OrbitTarget | null = null;
 
 /** main.ts tells this module how to open a cached cube in the time-cube scene. */
 export function registerOpenJob(fn: (key: string) => void): void {
   openJobFn = fn;
-}
-
-/** main.ts reports the target of the open cube so the orbit view can preset its sliders. */
-export function setCurrentTarget(t: OrbitTarget | null | undefined): void {
-  currentTarget = t ?? null;
-  const key = currentTarget?.name ?? "";
-  if (orbit && key !== orbitPreset) {
-    orbitPreset = key;
-    orbit.setTarget(currentTarget);
-  }
 }
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -35,8 +24,6 @@ const reducedMotion = (): boolean => !!reducedQuery?.matches;
 
 let scene: Scene = "cube";
 let globe: Globe | null = null;
-let orbit: OrbitView | null = null;
-let orbitPreset = "";
 let globeReady = false;
 let patches: api.CachedPatch[] = [];
 let targetList: api.TargetInfo[] = [];
@@ -49,8 +36,7 @@ export function showScene(next: Scene): void {
   scene = next;
   document.body.dataset.scene = next;
   $("scene-globe").hidden = next !== "globe";
-  $("scene-orbit").hidden = next !== "orbit";
-  for (const [id, s] of [["nav-globe", "globe"], ["nav-cube", "cube"], ["nav-orbit", "orbit"]] as const) {
+  for (const [id, s] of [["nav-globe", "globe"], ["nav-cube", "cube"]] as const) {
     const b = $(id);
     if (s === next) b.setAttribute("aria-current", "page");
     else b.removeAttribute("aria-current");
@@ -61,15 +47,6 @@ export function showScene(next: Scene): void {
   }
   if (next === "globe") void ensureGlobe();
   globe?.setActive(next === "globe");
-  if (next === "orbit") {
-    ensureOrbit();
-    const key = currentTarget?.name ?? "";
-    if (orbit && key !== orbitPreset) {
-      orbitPreset = key;
-      orbit.setTarget(currentTarget);
-    }
-  }
-  orbit?.setActive(next === "orbit");
   writeState({ scene: next });
   flushState();
   window.scrollTo({ top: 0 });
@@ -77,12 +54,9 @@ export function showScene(next: Scene): void {
 
 export function initScenes(): void {
   const start = readState().scene;
-  for (const [id, s] of [["nav-globe", "globe"], ["nav-cube", "cube"], ["nav-orbit", "orbit"]] as const) {
+  for (const [id, s] of [["nav-globe", "globe"], ["nav-cube", "cube"]] as const) {
     $(id).addEventListener("click", () => showScene(s));
   }
-  $("open-orbit").addEventListener("click", () => showScene("orbit"));
-  $("orbit-back").addEventListener("click", () => showScene("cube"));
-  $("orbit-to-globe").addEventListener("click", () => showScene("globe"));
   // The guided tour drives the cube workspace, so it always starts there.
   document.addEventListener("click", (ev) => {
     const hit = (ev.target as HTMLElement | null)?.closest("#tour-start, #tour-start-empty");
@@ -95,16 +69,10 @@ export function initScenes(): void {
 
 function teardown(): void {
   globe?.dispose();
-  orbit?.dispose();
   globe = null;
-  orbit = null;
 }
 
 if (import.meta.hot) import.meta.hot.dispose(teardown);
-
-function ensureOrbit(): void {
-  if (!orbit) orbit = new OrbitView(reducedMotion());
-}
 
 // ---------------------------------------------------------------------------
 // Scene 1: the sky globe
@@ -347,7 +315,7 @@ function wireGlobeUi(): void {
 
   $("globe-quick").addEventListener("click", () => {
     showScene("cube");
-    ($("quick-start") as HTMLButtonElement).click();
+    window.dispatchEvent(new CustomEvent("open-target", { detail: "barnard" }));
   });
   $("globe-tour").addEventListener("click", () => {
     showScene("cube");

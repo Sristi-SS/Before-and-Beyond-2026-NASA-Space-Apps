@@ -24,7 +24,8 @@ SIA_BASE = "https://irsa.ipac.caltech.edu/SIA"
 
 USER_AGENT = os.environ.get(
     "SPHEREX_USER_AGENT",
-    "SpherexTimeCube/0.1 (NASA Space Apps 2026 team; contact: team@example.org)",
+    "SpherexTimeCube/0.1 (NASA Space Apps 2026 team; "
+    "https://github.com/AdityaGaur77/Before-and-Beyond-2026-NASA-Space-Apps)",
 )
 
 ROOT = Path(__file__).resolve().parent.parent

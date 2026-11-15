@@ -34,10 +34,7 @@ export function groupLabel(g: GroupMeta): string {
 /** One-line description of a frame: source, date, wavelength, pass or epoch. */
 export function frameLabel(meta: FrameMeta): string {
   const date = meta.obs_time.slice(0, 10);
-  const tail = isWiseFrame(meta)
-    ? `epoch ${meta.epoch ?? meta.pass}`
-    : `pass ${meta.pass}`;
-  return `${sourceName(meta)} · ${date} · ${meta.wavelength_um.toFixed(2)} µm · ${tail}`;
+  return `${date} · ${isWiseFrame(meta) ? "WISE" : "SPHEREx"} · ${meta.wavelength_um.toFixed(2)} µm`;
 }
 
 export type MovieBand = typeof DET_W1 | typeof DET_W2;

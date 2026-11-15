@@ -53,11 +53,12 @@ export class SpectrumPanel {
   private passB = 0;
   private lastPick: { x: number; y: number } | null = null;
 
-  private readonly title = h("h2", { text: "Pixel spectrum and light curve" });
+  private readonly title = h("h2", { text: "The spot you pressed" });
+  private readonly explain = h("p", { className: "hint sp-explain-line" });
   private readonly readout = h("p", { className: "sp-readout" });
   private readonly live = h("p", { className: "sr-only" });
   private readonly tabSpectrum = h("button", { text: "Spectrum" });
-  private readonly tabPulse = h("button", { text: "Pulse view" });
+  private readonly tabPulse = h("button", { text: "Over time" });
   private readonly radiusSelect = h("select");
   private readonly csvButton = h("button", { className: "ghost", text: "Download CSV" });
   private readonly closeButton = h("button", { className: "ghost", text: "Close" });
@@ -124,7 +125,7 @@ export class SpectrumPanel {
       this.radius = Number(this.radiusSelect.value);
       if (this.lastPick) void this.load(this.lastPick.x, this.lastPick.y);
     });
-    const radiusLabel = h("label", { className: "field sp-radius" }, h("span", { text: "Aperture radius" }), this.radiusSelect);
+    const radiusLabel = h("label", { className: "field sp-radius" }, h("span", { text: "Size of the measuring circle" }), this.radiusSelect);
 
     this.csvButton.disabled = true;
     this.csvButton.addEventListener("click", () => {
@@ -140,14 +141,14 @@ export class SpectrumPanel {
     this.live.setAttribute("aria-live", "polite");
     this.status.setAttribute("role", "status");
 
-    const head = h("div", { className: "sp-head" }, this.title, tabs, radiusLabel, this.csvButton, this.closeButton);
+    const head = h("div", { className: "sp-head" }, this.title, this.closeButton, tabs);
 
     // Spectrum body.
     this.spectrumBody.id = "sp-body-spectrum";
     this.spectrumBody.setAttribute("role", "tabpanel");
     this.spectrumBody.setAttribute("aria-labelledby", "sp-tab-spectrum");
     this.spectrumCanvas.setAttribute("role", "img");
-    const chipRow = h("div", { className: "field" }, h("span", { text: "Molecule presets (approximate)" }), this.bandChips);
+    const chipRow = h("div", { className: "field" }, h("span", { text: "Shade where a molecule absorbs light (approximate)" }), this.bandChips);
     for (const m of MOLECULES) {
       const chip = h("button", { className: "chip", text: m.label, title: m.explain });
       chip.type = "button";
@@ -162,11 +163,13 @@ export class SpectrumPanel {
       this.bandChips.append(chip);
     }
     this.bandExplain.setAttribute("aria-live", "polite");
+    // Three things first: the sentence, the chart, its key.  Everything else folds away.
     this.spectrumBody.append(
-      this.spectrumCanvas, this.spectrumLegend, chipRow, this.bandExplain,
-      h("p", { className: "hint small", text: MOLECULE_NOTE }),
-      h("div", { className: "field" }, h("span", { text: "Passes" }), this.passChips),
-      this.compareBox, this.colourBox,
+      this.spectrumCanvas, this.spectrumLegend,
+      h("details", { className: "fold" }, h("summary", { text: "Molecules and passes" }),
+        chipRow, this.bandExplain, h("p", { className: "hint small", text: MOLECULE_NOTE }),
+        h("div", { className: "field" }, h("span", { text: "Passes (visits about six months apart)" }), this.passChips),
+        this.compareBox, this.colourBox),
     );
 
     // Pulse body.
@@ -184,13 +187,13 @@ export class SpectrumPanel {
     );
     for (const c of [this.pulseSpherexCanvas, this.pulseWiseCanvas]) c.setAttribute("role", "img");
     this.pulseBody.append(
-      this.pulseCaution, matchedLabel,
       this.pulseSpherexTitle, this.pulseSpherexCanvas, this.pulseSpherexLegend,
       this.pulseWiseTitle, this.pulseWiseCanvas, this.pulseWiseLegend,
+      h("details", { className: "fold" }, h("summary", { text: "Before you trust a change" }), this.pulseCaution, matchedLabel),
     );
 
     // Text alternative.
-    const summary = h("summary", { text: "Table of the measurements (text alternative to the charts)" });
+    const summary = h("summary", { text: "Table of every measurement" });
     const table = h("table");
     table.setAttribute("aria-label", "Measurements at the selected pixel, one row per frame");
     const headRow = h("tr");
@@ -203,8 +206,9 @@ export class SpectrumPanel {
     this.tableDetails.append(summary, h("div", { className: "sp-table-scroll" }, table));
 
     root.append(
-      head, this.readout, this.live, this.status, this.flagBanner,
-      this.spectrumBody, this.pulseBody, this.tableDetails,
+      head, this.explain, this.live, this.spectrumBody, this.pulseBody,
+      h("details", { className: "fold" }, h("summary", { text: "Numbers and settings" }),
+        this.readout, this.status, this.flagBanner, radiusLabel, this.tableDetails, this.csvButton),
     );
 
     new ResizeObserver(() => this.redraw()).observe(root);
@@ -237,6 +241,9 @@ export class SpectrumPanel {
     this.tabSpectrum.tabIndex = spec ? 0 : -1;
     this.tabPulse.tabIndex = spec ? -1 : 0;
     if (notify) this.hooks.onTab(tab);
+    this.explain.textContent = spec
+      ? "Each dot is one picture: how bright this spot was (up) in one infrared colour (across). Dips can hint at what it is made of."
+      : "Each dot is one picture: how bright this spot was (up) on one date (across).";
     window.requestAnimationFrame(() => this.redraw());
   }
 
@@ -271,6 +278,7 @@ export class SpectrumPanel {
       if (id !== this.request) return;
       this.data = null;
       this.status.textContent = `Could not measure this pixel: ${(error as Error).message}`;
+      this.explain.textContent = "This spot could not be measured. Press another spot, or try again in a moment.";
       this.redraw();
     }
   }
@@ -446,7 +454,7 @@ export class SpectrumPanel {
     this.spectrumCanvas.setAttribute("aria-label", describeSpectrum(sph));
     const flagged = sph.filter((f) => f.flagged === true).length;
     this.spectrumLegend.textContent =
-      `Colour and shape show the pass (passes are about six months apart). Hollow = flagged${flagged ? ` (${flagged} here)` : ""}: masked pixels in the aperture, flux is a lower limit. Bars are 1-sigma from the background ring.`;
+      `Colour and shape show the visit.${flagged ? ` Hollow dots (${flagged} here) are too bright to measure well: the true value is higher.` : ""}`;
   }
 
   private drawPulseCharts(): void {

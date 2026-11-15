@@ -2,6 +2,7 @@
 // Candidate search panel: ranked possible movers, their motion path, and where each one
 // is predicted to be in every other image.  Everything here is a candidate, never a detection.
 import * as api from "./api";
+import { compass } from "./motionmap";
 import { showTab } from "./shell";
 
 export interface CandidateContext {
@@ -36,7 +37,6 @@ function bandName(detector: number): string {
 }
 
 export class CandidatePanel {
-  private readonly run = el<HTMLButtonElement>("cand-run");
   private readonly status = el<HTMLElement>("cand-status");
   private readonly list = el<HTMLOListElement>("cand-list");
   private readonly detail = el<HTMLElement>("cand-detail");
@@ -51,7 +51,6 @@ export class CandidatePanel {
     this.overlay.hidden = true;
     this.overlay.setAttribute("aria-hidden", "true");
     ctx.blinkCanvas.parentElement?.appendChild(this.overlay);
-    this.run.addEventListener("click", () => void this.search());
     new ResizeObserver(() => this.draw()).observe(ctx.blinkCanvas);
     window.addEventListener("resize", () => this.draw());
   }
@@ -64,15 +63,6 @@ export class CandidatePanel {
     this.list.replaceChildren();
     this.detail.hidden = true;
     this.model.textContent = "";
-    const ok = !!this.ctx.jobKey() && this.ctx.group() !== 0 && !this.ctx.simActive();
-    this.run.disabled = !ok;
-    this.status.textContent = !this.ctx.jobKey()
-      ? "Build or open a cube first."
-      : this.ctx.simActive()
-        ? "The search uses real images only. Turn the simulator off to use it."
-        : this.ctx.group() === 0
-          ? "Pick one band in the Frames tab. SPHEREx and WISE units differ, so All bands is not searched."
-          : "";
     this.draw();
   }
 
@@ -82,13 +72,13 @@ export class CandidatePanel {
     this.markRow();
   }
 
-  private async search(): Promise<void> {
+  /** Rank the best motions (the server reuses the map it has just made). */
+  async search(): Promise<void> {
     const key = this.ctx.jobKey();
     const group = this.ctx.group();
     if (!key || group === 0) return;
     const request = ++this.request;
-    this.run.disabled = true;
-    this.status.textContent = "Trying many motions and ranking the best ones…";
+    this.status.textContent = "Ranking the best motions…";
     try {
       const result = await api.fetchCandidates(key, group, this.ctx.span(), this.ctx.step());
       if (request !== this.request) return;
@@ -96,8 +86,6 @@ export class CandidatePanel {
       this.render();
     } catch (error) {
       if (request === this.request) this.status.textContent = (error as Error).message.replace(/^\d+ [^—]*— /, "").replace(/^\{"detail":"|"\}$/g, "");
-    } finally {
-      if (request === this.request) this.run.disabled = false;
     }
   }
 
@@ -105,34 +93,28 @@ export class CandidatePanel {
     const r = this.result;
     if (!r) return;
     this.list.replaceChildren();
-    if (r.candidates.length === 0) {
-      this.status.textContent = "No candidates in this band.";
+    const top = r.candidates.slice(0, 3);
+    if (top.length === 0) {
+      this.status.textContent = "";
       return;
     }
-    this.status.textContent =
-      `${r.candidates.length} candidates from ${r.n_frames} images. Score at zero motion: ${r.zero_score.toFixed(1)}. ${r.caution}`;
+    this.status.textContent = "The three best motions. Press one to line the pictures up along it.";
     this.model.textContent =
-      `Shape check: ${r.model.name}, a small model (${r.model.parameters} numbers) trained on ${r.model.trained_on}. ` +
-      `It scores ${(r.model.validation_accuracy_on_simulated * 100).toFixed(0)}% on simulated test patches. ${r.model.note}`;
-    for (const c of r.candidates) {
+      `Searched ${r.n_frames} pictures. "Dot" is a small trained check (${r.model.parameters} numbers) of whether the lined-up spot looks like a point of light; ` +
+      `it scores ${(r.model.validation_accuracy_on_simulated * 100).toFixed(0)}% on made-up test patches. ${r.caution}`;
+    for (const c of top) {
       const li = node("li");
       const b = node("button", "cand");
       b.type = "button";
       b.setAttribute("aria-pressed", "false");
-      b.setAttribute("aria-label",
-        `Candidate ${c.rank}: ${c.vx} east, ${c.vy} north arcseconds per year, score ${c.score}`);
+      const dot = c.patch_score >= 0.7 ? "looks like a point of light" : c.patch_score >= 0.4 ? "shape unclear" : "does not look like a point of light";
+      const sharper = c.ratio === null ? `score ${c.score.toFixed(1)}` : c.ratio >= 1.05 ? `${c.ratio.toFixed(1)}× sharper than no motion` : "no sharper than no motion";
+      b.setAttribute("aria-label", `Candidate ${c.rank}: ${c.speed_arcsec_yr.toFixed(1)} arcseconds a year ${compass(c.vx, c.vy)}, ${sharper}, ${dot}`);
       const arrow = node("span", "cand-arrow", "↑");
       arrow.style.transform = `rotate(${-c.pa_deg}deg)`; // east is to the left on the sky
-      arrow.title = `Direction on the sky (north up, east left): position angle ${c.pa_deg}°`;
-      const v = node("span", "cand-v", `${c.vx.toFixed(1)} E, ${c.vy.toFixed(1)} N ″/yr `);
+      const v = node("span", "cand-v", `${c.speed_arcsec_yr.toFixed(1)}″ a year ${compass(c.vx, c.vy)} `);
       v.appendChild(arrow);
-      const bar = node("span", "cand-bar");
-      const fill = node("i");
-      fill.style.width = `${Math.round(c.patch_score * 100)}%`;
-      bar.appendChild(fill);
-      const sub = node("span", "cand-sub");
-      sub.append(node("span", "", "shape"), bar, node("span", "", c.patch_score.toFixed(2)));
-      b.append(node("span", "cand-rank", String(c.rank)), v, node("span", "cand-score", c.score.toFixed(1)), sub);
+      b.append(node("span", "cand-rank", String(c.rank)), v, node("span", "cand-sub", `${sharper} · ${dot}`));
       b.addEventListener("click", () => this.pick(c, b));
       li.appendChild(b);
       this.list.appendChild(li);
@@ -151,18 +133,16 @@ export class CandidatePanel {
     const d = this.detail;
     d.replaceChildren();
     d.hidden = false;
-    const shape = c.patch_score >= 0.7 ? "looks like a point source" : c.patch_score >= 0.4 ? "is unclear" : "does not look like a point source";
+    const open = node("button", "primary", "See it lined up");
+    open.type = "button";
+    open.addEventListener("click", () => showTab("dock-tilt", "tilt"));
     const facts = node("dl", "provenance");
     const add = (k: string, v: string): void => { facts.append(node("dt", "", k), node("dd", "", v)); };
-    add("Motion", `${c.speed_arcsec_yr.toFixed(2)} ″/yr toward ${c.pa_deg.toFixed(0)}°`);
-    add("Stack position", fmtSky(c.ra_deg, c.dec_deg));
-    add("Score", c.ratio !== null ? `${c.score.toFixed(1)} (${c.ratio.toFixed(2)}× no motion)` : c.score.toFixed(1));
-    add("Shape check", `${c.patch_score.toFixed(2)}: ${shape}`);
-    add("Predicted today", `${fmtSky(c.today.ra_deg, c.today.dec_deg)}${c.today.inside ? "" : " (outside this field)"}`);
-
+    add("Where it lines up", fmtSky(c.ra_deg, c.dec_deg));
+    add("Where it would be today", `${fmtSky(c.today.ra_deg, c.today.dec_deg)}${c.today.inside ? "" : " (outside this patch)"}`);
     const table = node("table", "cand-table");
     const head = node("tr");
-    for (const h of ["Date", "Band", "x, y", "In stack"]) head.appendChild(node("th", "", h));
+    for (const h of ["Date", "Set", "x, y", "Used"]) head.appendChild(node("th", "", h));
     table.appendChild(head);
     for (const p of c.path) {
       const tr = node("tr", p.inside ? "" : "out");
@@ -177,18 +157,12 @@ export class CandidatePanel {
     }
     const wrap = node("div", "cand-table-wrap");
     wrap.appendChild(table);
-    const open = node("button", "ghost", "Show the stack (Tilt tab)");
-    open.type = "button";
-    open.addEventListener("click", () => showTab("dock-tilt", "tilt"));
+    const more = node("details", "fold");
+    more.append(node("summary", "", "Where it should be in every picture"), facts, wrap);
     d.append(
-      node("h3", "", `Candidate ${c.rank}`),
-      facts,
-      node("h3", "", "Predicted position in every image"),
-      node("p", "hint small",
-        "Open the Blink view: the dashed ring shows where this candidate would be in the image on screen. The dots are its path. The path is a straight line; it ignores parallax."),
-      wrap,
+      node("p", "hint", `Candidate ${c.rank}. In the Blink view a dashed ring now shows where it should be in each picture. If a dot sits in the ring every time, that is a good sign. It is still a candidate, not a discovery.`),
       open,
-      node("p", "hint small caution-note", "A candidate only. It is not a detection."),
+      more,
     );
     this.markRow();
   }

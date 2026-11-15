@@ -4,6 +4,8 @@ AI-assistance: this file was written with AI assistance; see README.md "AI assis
 """
 from __future__ import annotations
 
+import contextlib
+import hmac
 import os
 import re
 import threading
@@ -117,6 +119,45 @@ def enforce_build_limit(request: Request, params: dict) -> None:
         )
 
 
+# ------------------------------------------------ heavy work, one at a time
+# A motion map or a candidate search holds tens of megabytes for a few seconds.  On a small
+# host several at once can run out of memory, so they take turns; a caller waits a short
+# while and is then told to try again.
+HEAVY_WAIT_S = float(os.environ.get("SPHEREX_HEAVY_WAIT_S", "25"))
+_heavy = threading.BoundedSemaphore(1)
+
+
+@contextlib.contextmanager
+def heavy_slot():
+    if not _heavy.acquire(timeout=HEAVY_WAIT_S):
+        raise HTTPException(503, "The server is busy with another search. Try again in a few seconds.",
+                            headers={"Retry-After": "5"})
+    try:
+        yield
+    finally:
+        _heavy.release()
+
+
+# ---------------------------------------------------------- who may rebuild
+def may_rebuild(request: Request) -> bool:
+    """May this caller rebuild a saved cube?
+
+    A rebuild replaces the cube for every visitor, and the cube is empty while it runs, so
+    strangers may not start one.  With SPHEREX_ADMIN_TOKEN set, the caller must send it in
+    the X-Admin-Token header.  With no token, only a direct call from the same machine or
+    the local network is accepted: anything that came through a proxy is a visitor.
+    """
+    from .hardware import _is_local     # late import keeps the module order simple
+
+    expected = os.environ.get("SPHEREX_ADMIN_TOKEN", "")
+    if expected:
+        given = request.headers.get("x-admin-token", "")
+        return hmac.compare_digest(given.encode(), expected.encode())
+    if request.headers.get("x-forwarded-for"):
+        return False
+    return _is_local(request.client.host if request.client else "unknown")
+
+
 # ------------------------------------------------------------------- status
 ARCHIVE_PING_URL = "https://irsa.ipac.caltech.edu/TAP/availability"
 PING_TTL_S = 300.0
@@ -185,13 +226,15 @@ def active_jobs() -> int:
 
 
 @router.get("/api/status")
-def status() -> dict:
+def status(request: Request) -> dict:
     ok = archive_ok()
     return {
         "mode": "offline-cache" if ok is False else "online",
         "archive_ok": ok,
         "cached_targets": cached_targets(),
         "active_jobs": active_jobs(),
+        # "open": this caller may rebuild a saved cube; "locked": only the maintainers may.
+        "refresh": "open" if may_rebuild(request) else "locked",
     }
 
 

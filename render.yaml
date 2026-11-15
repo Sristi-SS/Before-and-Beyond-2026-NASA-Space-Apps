@@ -13,6 +13,9 @@ services:
         value: "1"
       - key: SPHEREX_CONCURRENCY
         value: "2"
+      # Only requests that send this token (header X-Admin-Token) may rebuild a saved cube.
+      - key: SPHEREX_ADMIN_TOKEN
+        generateValue: true
       # A random secret made by Render.  Hardware devices must send it; it is never in the repo.
       - key: SPHEREX_HW_TOKEN
         generateValue: true

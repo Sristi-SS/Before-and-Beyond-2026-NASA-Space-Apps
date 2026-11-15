@@ -108,6 +108,9 @@ function connect(): void {
 }
 
 export function initHardware(): void {
+  // Only a page opened with ?hw=1 (the exhibit screen) joins the hardware socket.  An ordinary
+  // visitor's page must not take a seat on it, nor be steered by somebody else's controller.
+  if (!showIndicator) return;
   // Output side: LED ring direction = current (vx, vy); sharpness = normalised tilt score.
   window.addEventListener("tilt-start", () => send({ type: "status", state: "processing" }));
   window.addEventListener("tilt-result", (ev) => {

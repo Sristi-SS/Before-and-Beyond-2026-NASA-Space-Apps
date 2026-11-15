@@ -166,3 +166,49 @@ def test_failed_update_keeps_the_old_cube(tmp_path, monkeypatch):
     assert "old cube was kept" in final["refresh_error"]
     assert (tmp_path / "jobs" / key / "frames" / "000.npy").exists()
     assert job.key == key
+
+
+def test_visitors_cannot_rebuild_a_saved_cube(tmp_path, monkeypatch):
+    monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(jobs, "manager", jobs.JobManager())
+    monkeypatch.setattr(refresh.service, "archive_ok", lambda: True)
+    monkeypatch.delenv("SPHEREX_ADMIN_TOKEN", raising=False)
+    refresh.service.limiter.reset()
+    frames, mjds = _mover_frames(n=4)
+    _write_job(tmp_path, frames, mjds)
+    started = []
+    monkeypatch.setattr(refresh, "rebuild", lambda key: started.append(key) or jobs.manager.get(key))
+    # A visitor (the request came through a proxy): refused, and nothing starts.
+    r = client.post(f"/api/jobs/{KEY}/refresh", headers={"x-forwarded-for": "8.8.8.8"})
+    assert r.status_code == 403 and not started
+    assert client.get("/api/status", headers={"x-forwarded-for": "8.8.8.8"}).json()["refresh"] == "locked"
+    # With a token set, only the token opens it, from anywhere.
+    monkeypatch.setenv("SPHEREX_ADMIN_TOKEN", "s3cret")
+    assert client.post(f"/api/jobs/{KEY}/refresh").status_code == 403
+    assert client.post(f"/api/jobs/{KEY}/refresh", headers={"x-admin-token": "wrong"}).status_code == 403
+    r = client.post(f"/api/jobs/{KEY}/refresh", headers={"x-admin-token": "s3cret", "x-forwarded-for": "8.8.8.8"})
+    assert r.status_code == 200 and started == [KEY]
+    assert client.get("/api/status").json()["refresh"] == "locked"
+    assert client.get("/api/status", headers={"x-admin-token": "s3cret"}).json()["refresh"] == "open"
+    refresh.service.limiter.reset()
+
+
+def test_map_and_candidates_share_one_computation(tmp_path, monkeypatch):
+    from backend import tilt
+    monkeypatch.setattr(config, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(jobs, "manager", jobs.JobManager())
+    refresh.service.analysis_limiter.reset()
+    frames, mjds = _mover_frames()
+    _write_job(tmp_path, frames, mjds)
+    calls = []
+    real = tilt.motion_map
+    monkeypatch.setattr(tilt, "motion_map", lambda *a, **k: calls.append(1) or real(*a, **k))
+    a = client.get(f"/api/jobs/{KEY}/motionmap", params={"detector": 3})
+    b = client.get(f"/api/jobs/{KEY}/candidates", params={"detector": 3})
+    assert a.status_code == 200 and b.status_code == 200, (a.text[:200], b.text[:200])
+    assert len(calls) == 1
+    assert a.headers["cache-control"].startswith("public")
+    # A grid above the size limit is refused before any work is done.
+    r = client.get(f"/api/jobs/{KEY}/motionmap", params={"detector": 3, "span": 60, "step": 1})
+    assert r.status_code == 400 and len(calls) == 1
+    refresh.service.analysis_limiter.reset()

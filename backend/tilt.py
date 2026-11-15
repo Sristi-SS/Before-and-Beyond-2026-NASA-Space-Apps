@@ -134,12 +134,17 @@ def evaluate_grid(
 # ---------------------------------------------------------------------------
 # Motion map (M6)
 # ---------------------------------------------------------------------------
+import threading  # noqa: E402
+from collections import OrderedDict  # noqa: E402
 from dataclasses import dataclass  # noqa: E402
 
 from scipy import fft as sfft  # noqa: E402
 
-MAX_MAP_AXIS = 121          # velocity samples per axis (keeps a request below ~15 s)
+# Velocity samples per axis.  A 121 x 121 map held about 570 MB at its peak and took 15 s,
+# more than a small host has; 49 x 49 stays under about 100 MB and a couple of seconds.
+MAX_MAP_AXIS = 49
 _EDGE_PX = 2                # ignore this many pixels at the image edge when scoring
+_VX_CHUNK = 8               # vx values stacked at once (bounds the working memory)
 
 
 @dataclass
@@ -205,6 +210,14 @@ def fixed_source_mask(images: np.ndarray, radius: int = 3) -> np.ndarray:
                                    iterations=max(1, radius))
 
 
+def check_grid(span: float, step: float) -> int:
+    """Half-width of the velocity grid in samples; ValueError if the grid would be too large."""
+    half = max(1, int(round(float(span) / float(step))))
+    if 2 * half + 1 > MAX_MAP_AXIS:
+        raise ValueError("velocity grid too large; increase step or reduce span")
+    return half
+
+
 def motion_map(
     images: Sequence[np.ndarray],
     mjds: Sequence[float],
@@ -237,9 +250,7 @@ def motion_map(
     t0 = float(mj.min()) if t0_mjd is None else float(t0_mjd)
     dt = (mj - t0) / 365.25                                   # years, shape (nf,)
 
-    half = max(1, int(round(float(span) / float(step))))
-    if 2 * half + 1 > MAX_MAP_AXIS:
-        raise ValueError("velocity grid too large; increase step or reduce span")
+    half = check_grid(span, step)
     vals = np.arange(-half, half + 1, dtype=np.float64) * float(step)
     nv = vals.size
 
@@ -249,8 +260,12 @@ def motion_map(
     resid[:, mask] = 0.0
     resid = np.clip(_normalised(resid), -clip, clip)             # equal-noise weighting
 
+    # The Fourier shift wraps around, so the frames are padded with zeros.  Content that
+    # leaves one side re-enters the picture only after crossing both pads, so the pads
+    # together must be at least the largest shift.  (The old limit of 48 pixels let shifts
+    # above 96 pixels, e.g. 45 arcsec/yr over the 14 WISE years, wrap back into the stack.)
     max_px = float(np.max(np.abs(vals)) * np.max(np.abs(dt)) / pixscale_arcsec)
-    pad = int(min(48, np.ceil(max_px) + 3))
+    pad = int(np.ceil(max_px / 2.0) + 3)
     fy = sfft.next_fast_len(ny + 2 * pad, real=True)
     fx = sfft.next_fast_len(nx + 2 * pad, real=True)
     padded = np.zeros((nf, fy, fx))
@@ -274,19 +289,23 @@ def motion_map(
         ey = np.exp(-2j * np.pi * ky[None, :] * (-vy * a)[:, None])      # (nf, fy)
         g = F * ey[:, :, None]                                           # (nf, fy, kx)
         g_k = np.ascontiguousarray(g.transpose(2, 0, 1))                 # (kx, nf, fy)
-        out = np.matmul(ex_k, g_k)                                       # (kx, nv, fy)
-        stacks = sfft.irfft2(out.transpose(1, 2, 0), s=(fy, fx), axes=(-2, -1), workers=-1)
-        crop = stacks[:, y0:y1, x0:x1].reshape(nv, -1)
-        med = np.median(crop, axis=1)
-        mad = np.median(np.abs(crop - med[:, None]), axis=1)
-        noise = 1.4826 * mad
-        noise = np.where(noise > 0, noise, np.maximum(crop.std(axis=1), 1e-12))
-        arg = crop.argmax(axis=1)
-        peak = crop[np.arange(nv), arg]
-        score[j] = ((peak - med) / noise).astype(np.float32)
         w = x1 - x0
-        px[j, :, 0] = arg % w + b
-        px[j, :, 1] = arg // w + b
+        # A few vx values at a time: the stacks of a whole row at once are what used the memory.
+        for c0 in range(0, nv, _VX_CHUNK):
+            sl = slice(c0, min(nv, c0 + _VX_CHUNK))
+            out = np.matmul(ex_k[:, sl, :], g_k)                         # (kx, n, fy)
+            stacks = sfft.irfft2(out.transpose(1, 2, 0), s=(fy, fx), axes=(-2, -1), workers=-1)
+            n = stacks.shape[0]
+            crop = stacks[:, y0:y1, x0:x1].reshape(n, -1)
+            med = np.median(crop, axis=1)
+            mad = np.median(np.abs(crop - med[:, None]), axis=1)
+            noise = 1.4826 * mad
+            noise = np.where(noise > 0, noise, np.maximum(crop.std(axis=1), 1e-12))
+            arg = crop.argmax(axis=1)
+            peak = crop[np.arange(n), arg]
+            score[j, sl] = ((peak - med) / noise).astype(np.float32)
+            px[j, sl, 0] = arg % w + b
+            px[j, sl, 1] = arg // w + b
 
     jb, ib = np.unravel_index(int(np.argmax(score)), score.shape)
     jz = ib0 = half  # v = 0 sits at the centre of the grid
@@ -299,3 +318,26 @@ def motion_map(
         masked_fraction=float(mask.mean()),
         peaks=px,
     )
+
+
+# The motion map and the candidate list of one band are the same computation, and every
+# visitor of a saved cube asks for the same one, so the last few maps are kept.
+_MAP_CACHE: "OrderedDict[tuple, MotionMap]" = OrderedDict()
+_MAP_CACHE_LOCK = threading.Lock()
+_MAP_CACHE_MAX = 32
+
+
+def motion_map_cached(memo: tuple, images: Sequence[np.ndarray], mjds: Sequence[float],
+                      pixscale_arcsec: float, span: float, step: float) -> MotionMap:
+    """:func:`motion_map`, remembered under ``memo`` (job key, band, grid, frame count, build time)."""
+    with _MAP_CACHE_LOCK:
+        held = _MAP_CACHE.get(memo)
+        if held is not None:
+            _MAP_CACHE.move_to_end(memo)
+            return held
+    mm = motion_map(images, mjds, pixscale_arcsec, span=span, step=step)
+    with _MAP_CACHE_LOCK:
+        _MAP_CACHE[memo] = mm
+        while len(_MAP_CACHE) > _MAP_CACHE_MAX:
+            _MAP_CACHE.popitem(last=False)
+    return mm

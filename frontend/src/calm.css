@@ -1,0 +1,179 @@
+/* AI-assistance: this file was written with AI assistance; see README.md "AI assistance". */
+/*
+ * Calm layer, loaded last.  Same arcade look (black screen, pixel titles, cyan for what you press),
+ * with the volume turned down: one thin line in place of every double glowing wall, no glow on
+ * buttons, no frames around the top bar, no rows of dots.  It also lays out the parts that moved:
+ * the line under the view buttons, the Share menu, the three-picture Compare, the map inside Tools,
+ * and the spectrum as a side panel that no longer covers the picture.
+ */
+:root {
+  --wall: #3d5bd6;
+  --line-1: rgba(125, 145, 225, 0.2);
+  --line-2: rgba(125, 145, 225, 0.42);
+  --hair: var(--line-1);
+  --hair-2: var(--line-2);
+  --sheet-w: 400px;
+}
+body { background: #000; }
+
+/* ------------------------------------------------------------ one thin line, no glow */
+.panel, .deck, .view-seg, .tour, .help-pop, .dock-handle, .view-stub {
+  border: 1px solid var(--line-2); box-shadow: none; background: rgba(3, 5, 12, 0.95);
+}
+.topbar > * { border: 0; box-shadow: none; background: transparent; }
+.topbar { top: 10px; }
+.brand-mark { border: 1px solid var(--line-2); }
+.scene-nav { gap: 6px; padding: 0; }
+.scene-nav button { border: 1px solid transparent; }
+.scene-nav button:not([aria-current="page"]) { border-color: var(--line-1); }
+.scene-nav button[aria-current="page"], .view-seg button[aria-pressed="true"] { box-shadow: none; }
+.view-seg { padding: 3px; border-radius: 8px; }
+.view-seg button[aria-pressed="true"] { background: var(--glow); }
+.tab-level > button[aria-expanded]::after { display: none; }
+.dock-tabs button[aria-selected="true"]::after { height: 2px; box-shadow: none; }
+button.primary, .hero-cta button.primary, .deck #play, .intro .intro-btn.primary { box-shadow: none; }
+button.primary:hover:not(:disabled), .deck #play:hover:not(:disabled) { box-shadow: none; }
+button { border-width: 1px; }
+input:not([type="range"]):not([type="checkbox"]), select { border-width: 1px; }
+input[type="range"]::-webkit-slider-thumb, #timeline::-webkit-slider-thumb { box-shadow: none; }
+input[type="range"]::-moz-range-thumb { box-shadow: none; }
+.pick, .metric, .cand-detail, .gl-controls button, #globe-cubes .preset { border-width: 1px; }
+#globe-cubes li:first-child .preset { box-shadow: none; }
+.tab-dot, #status-badge::before { box-shadow: none; }
+.tour-target { box-shadow: none; }
+.blink-canvas { box-shadow: 0 0 0 1px var(--line-2); }
+body .bubble { filter: drop-shadow(3px 3px 0 rgba(61, 91, 214, 0.7)); }
+
+/* Titles: yellow pixel type, no shadow and no dots on the small ones. */
+.dock > section > h2::after, .dock-head > h2::after, .checklist-wrap h3::after, .scene-side h3::after { display: none; }
+.dock > section > h2, .dock-head > h2, .sheet .sp-head h2, .checklist-wrap h3, .cand-detail h3, .scene-side h3 { text-shadow: none; }
+.dock > section > h2:not(:first-child) { margin-top: 0.9rem; padding-top: 1rem; border-top: 1px solid var(--line-1); }
+.tour::before { display: none; }
+details.fold { border-top: 1px solid var(--line-1); padding-top: 0.6rem; }
+
+/* Close buttons: a real, pressable X. */
+.dock-close {
+  width: 30px; height: 30px; border: 1px solid var(--line-2); border-radius: 4px; background: transparent;
+  font: 9px/1 var(--pixel); color: var(--ink-2); display: grid; place-items: center;
+}
+.dock-close:hover:not(:disabled) { color: #000; background: var(--glow); border-color: var(--glow); }
+.dock-handle { padding: 0.9rem 0.5rem; border-radius: 6px; }
+
+/* ------------------------------------------------------------ the stage */
+.stage { --area-top: calc(var(--top) + 106px); }
+.view-desc {
+  position: absolute; top: calc(var(--top) + 50px); left: calc(var(--pad-l) + var(--area-w) / 2); transform: translateX(-50%);
+  width: min(640px, calc(var(--area-w) - 24px)); min-height: 2.6em; text-align: center; z-index: 11;
+  font-size: 0.86rem; line-height: 1.45; color: var(--ink-2); text-shadow: 0 0 6px #000, 0 0 2px #000;
+}
+.view-desc:empty { display: none; }
+.empty-state { gap: 0.9rem; }
+.empty-state p { color: var(--ink-2); font-size: 0.95rem; max-width: 44ch; }
+.view-stub h2 { font: 11px/1.6 var(--pixel); text-shadow: none; }
+
+/* Timeline bar: Share lives here, for this cube. */
+.deck { border-radius: 10px; gap: 0.8rem; }
+.deck-share { position: relative; flex: none; }
+.share-menu {
+  position: absolute; right: 0; bottom: calc(100% + 14px); z-index: 20; display: grid; gap: 6px; padding: 10px; width: 190px;
+  background: #04060e; border: 1px solid var(--line-2); border-radius: 8px;
+}
+.share-menu button { text-align: left; }
+.share-menu .hint { min-height: 0; }
+
+/* Quiet "Replay intro", bottom left. */
+.footer-replay {
+  pointer-events: auto; position: fixed; left: 14px; bottom: 1px; padding: 2px 4px; border: 0; background: none;
+  font-size: 0.62rem; color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px;
+}
+.footer-replay:hover:not(:disabled) { background: none; color: var(--ink); }
+
+/* ------------------------------------------------------------ panels */
+.group-picker { display: grid; gap: 0.7rem; }
+.chip-row { display: grid; gap: 0.3rem; }
+.chip-row-name { font-size: 0.72rem; color: var(--ink-3); }
+button.chip.movie { border-style: solid; }
+.find-row { align-items: flex-end; }
+.find-row button { flex: none; }
+.map-info:not([hidden]) { display: grid; }
+#map-wrap { position: static; display: grid; gap: 0.5rem; padding: 0; justify-items: stretch; }
+.map-info { align-items: flex-start; text-align: left; max-width: none; gap: 0.3rem; font-size: 0.84rem; }
+.map-info b { font-size: 1rem; }
+.map-canvas { width: 100%; max-width: none; height: auto; box-shadow: none; border: 1px solid var(--line-2); border-radius: 6px; }
+.cand { grid-template-columns: 26px 1fr; }
+.cand-rank { grid-row: 1 / 3; font-size: 12px; }
+.cand-v { font-family: var(--sans); font-size: 0.86rem; color: var(--ink); }
+.cand-sub { grid-column: 2; font-size: 0.74rem; color: var(--ink-2); }
+.result-grid figcaption { margin: 0 0 0.3rem; font-family: var(--sans); font-size: 0.74rem; color: var(--ink-2); min-height: 2.3em; }
+.metrics { grid-template-columns: 1fr 1fr; }
+.metric:first-child b { font-size: 1.05rem; font-family: var(--sans); font-weight: 600; }
+
+/* ------------------------------------------------------------ Compare: before, after, what changed */
+.cmp-wrap { align-items: center; gap: 0.6rem; padding: 0; overflow: visible; }
+.cmp-controls { justify-content: center; gap: 0.8rem 1.2rem; }
+.cmp-controls .field { flex-direction: row; align-items: center; gap: 0.5rem; font: 9px/1 var(--pixel); color: var(--title); text-transform: uppercase; }
+.cmp-controls .field select { font-family: var(--sans); font-size: 0.86rem; text-transform: none; }
+.cmp-note { font-size: 0.84rem; color: var(--ink-2); text-align: center; max-width: 760px; line-height: 1.45; }
+.cmp-area {
+  --side: min(calc((var(--area-w) - 60px) / 3), calc(var(--area-h) - 170px), 430px);
+  flex: none; min-height: 0; display: grid; grid-template-columns: repeat(3, var(--side)); gap: 14px; justify-content: center;
+}
+.cmp-panel { display: grid; gap: 0.3rem; }
+.cmp-panel figcaption { margin: 0; font: 9px/1.5 var(--pixel); text-transform: uppercase; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmp-panel.changed figcaption { color: var(--title); }
+.cmp-frame { width: var(--side); height: var(--side); max-width: none; aspect-ratio: auto; border: 1px solid var(--line-2); border-radius: 4px; }
+.cmp-panel.changed .cmp-frame { border-color: var(--title); }
+.cmp-canvas { border: 0; border-radius: 0; }
+.cmp-msg { position: absolute; inset: 0; display: grid; place-items: center; padding: 1rem; text-align: center; font-size: 0.84rem; color: var(--ink-2); }
+.cmp-ring { border: 2px solid #fff; box-shadow: 0 0 0 1px #000; }
+.cmp-legend { text-align: center; font-size: 0.82rem; color: var(--ink-2); }
+
+/* ------------------------------------------------------------ the spectrum: a side panel, not a sheet over the picture */
+@media (min-width: 921px) {
+  .sheet {
+    left: auto; right: var(--gap); top: var(--top); bottom: var(--gap); width: var(--sheet-w); max-height: none;
+    border: 1px solid var(--line-2);
+  }
+  body[data-scene="cube"]:has(#spectrum-panel:not([hidden])) { --pad-r: calc(var(--sheet-w) + 2 * var(--gap)); }
+}
+.sp-head { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem 0.6rem; }
+.sp-head h2 { margin: 0; }
+.sp-head .chips { grid-column: 1 / -1; }
+.sp-canvas { height: 230px; border-color: var(--line-1); }
+.sp-explain-line { font-size: 0.84rem; }
+.sp-banner, .cmp-warn:not(:empty) { border-width: 1px; }
+
+/* ------------------------------------------------------------ intro */
+#intro .intro-frame { border: 1px solid var(--line-2); box-shadow: none; padding: 0; border-radius: 6px; overflow: hidden; }
+#intro .intro-skip {
+  border: 1px solid var(--line-2); border-radius: 4px; padding: 8px 14px; text-decoration: none;
+  font: 9px/1.4 var(--pixel); text-transform: uppercase; color: var(--ix-ink);
+}
+#intro .intro-skip:hover:not(:disabled) { border-color: var(--glow); color: var(--glow); background: none; }
+#intro .intro-transport input::-webkit-slider-thumb { box-shadow: none; }
+#intro .intro-btn.primary { box-shadow: none; }
+.intro-key.drift { border-top: 2px dashed var(--amber); }
+.intro-key.sway { border-top: 2px dotted var(--azure); }
+.intro-key.seen { border-top: 3px solid #eceff7; }
+#intro .intro-cards h2 { text-shadow: 2px 2px 0 var(--title-shadow); }
+
+/* ------------------------------------------------------------ phones */
+@media (max-width: 920px) {
+  .topbar-meta .badge, #fullscreen-demo { display: none; }
+  .view-seg { overflow: visible; max-width: calc(100vw - 16px); }
+  .view-seg button { font-size: 8px; padding: 0.55rem 0.5rem; }
+  .view-desc { font-size: 0.78rem; top: calc(var(--top) + 44px); }
+  .stage { --area-top: calc(var(--top) + 112px); }
+  .deck { gap: 0.5rem; padding: 0.5rem 0.6rem; }
+  .cube-count { display: none; }
+  .share-menu { right: -4px; }
+  .cmp-area {
+    --side: min(calc((var(--area-w) - 26px) / 2), calc((var(--area-h) - 200px) / 2));
+    grid-template-columns: repeat(2, var(--side)); gap: 8px;
+  }
+  .cmp-panel.changed { grid-column: 1 / -1; justify-self: center; }
+  .cmp-note, .cmp-legend { font-size: 0.74rem; }
+  .cmp-panel figcaption { font-size: 7px; }
+  .sheet { left: 8px; right: 8px; bottom: 8px; max-height: 62vh; }
+  .footer-replay { display: none; }
+}

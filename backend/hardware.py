@@ -33,6 +33,8 @@ router = APIRouter()
 
 MAX_MESSAGE_BYTES = 1024
 MAX_CONNECTIONS = 16
+# Devices keep seats of their own, so a crowd of open web pages cannot lock the controller out.
+MAX_DEVICES = 4
 MAX_MESSAGES_PER_S = 60
 _LOCAL_NAMES = ("localhost", "testclient")      # "testclient" is the in-process test client
 MAX_OLED_LINES = 8
@@ -159,8 +161,10 @@ async def hardware_ws(ws: WebSocket, role: str = "browser", token: Optional[str]
     from .service import forwarded_ip     # late import keeps the module order simple
 
     host = forwarded_ip(ws.headers, ws.client.host if ws.client else "unknown")
+    full = (len(hub.devices) >= MAX_DEVICES if role == "device"
+            else len(hub.browsers) >= MAX_CONNECTIONS - MAX_DEVICES)
     if (role not in ("device", "browser") or not _origin_ok(ws) or not _token_ok(token, role, host)
-            or hub.count() >= MAX_CONNECTIONS):
+            or full):
         await ws.close(code=1008)
         return
     await ws.accept()
