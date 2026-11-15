@@ -4,6 +4,9 @@
 // pins for the mission targets and markers for every patch that already has a cube.
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { Line2 } from "three/examples/jsm/lines/Line2.js";
+import { LineGeometry } from "three/examples/jsm/lines/LineGeometry.js";
+import { LineMaterial } from "three/examples/jsm/lines/LineMaterial.js";
 import type { BrightStars } from "./api";
 
 const D2R = Math.PI / 180;
@@ -70,39 +73,60 @@ export interface TextSpriteOptions {
   height: number;
   color?: string;
   bold?: boolean;
+  /** The site's fonts: "sans" for names, "mono" for numbers, "pixel" for titles. */
+  font?: "sans" | "mono" | "pixel";
   /** true: constant size on screen (height is a fraction of the view); false: height in world units. */
   screen?: boolean;
 }
 
+const SPRITE_FONTS = {
+  sans: `"Bricolage Grotesque Variable", "Segoe UI", system-ui, sans-serif`,
+  mono: `"JetBrains Mono Variable", ui-monospace, monospace`,
+  pixel: `"Press Start 2P", ui-monospace, monospace`,
+};
+
 export function textSprite(text: string, opts: TextSpriteOptions): THREE.Sprite {
-  const font = `${opts.bold ? "600 " : ""}30px 'Segoe UI', system-ui, sans-serif`;
-  const probe = document.createElement("canvas").getContext("2d")!;
-  probe.font = font;
-  const w = Math.ceil(probe.measureText(text).width) + 16;
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = 48;
-  const ctx = canvas.getContext("2d")!;
-  ctx.font = font;
-  ctx.textBaseline = "middle";
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = "rgba(8,13,19,0.9)";
-  ctx.strokeText(text, 8, 25);
-  ctx.fillStyle = opts.color ?? "#cfe0ee";
-  ctx.fillText(text, 8, 25);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.LinearFilter;
-  tex.generateMipmaps = false;
+  const kind = opts.font ?? "sans";
+  // The pixel font is drawn on an 8px grid and is twice as wide as the sans: 24px keeps it crisp and in proportion.
+  const px = kind === "pixel" ? 24 : 30;
+  const font = `${opts.bold && kind !== "pixel" ? "650 " : ""}${px}px ${SPRITE_FONTS[kind]}`;
   const mat = new THREE.SpriteMaterial({
-    map: tex,
     transparent: true,
     depthWrite: false,
     depthTest: false,
     sizeAttenuation: !(opts.screen ?? true),
   });
   const sprite = new THREE.Sprite(mat);
-  sprite.scale.set((opts.height * w) / 48, opts.height, 1);
+  const draw = (): void => {
+    const canvas = document.createElement("canvas");
+    let ctx = canvas.getContext("2d")!;
+    ctx.font = font;
+    const w = Math.ceil(ctx.measureText(text).width) + 16;
+    canvas.width = w;
+    canvas.height = 48;
+    ctx = canvas.getContext("2d")!;
+    ctx.font = font;
+    ctx.textBaseline = "middle";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = kind === "pixel" ? 7 : 5;
+    ctx.strokeStyle = "rgba(4, 6, 14, 0.92)";
+    ctx.strokeText(text, 8, 25);
+    ctx.fillStyle = opts.color ?? "#cfe0ee";
+    ctx.fillText(text, 8, 25);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.minFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+    // A new texture each time: the canvas may change size once the web font arrives.
+    mat.map?.dispose();
+    mat.map = tex;
+    mat.needsUpdate = true;
+    sprite.scale.set((opts.height * w) / 48, opts.height, 1);
+  };
+  draw();
+  if (document.fonts && !document.fonts.check(font, text)) {
+    document.fonts.load(font, text).then(draw, () => undefined);
+  }
   return sprite;
 }
 
@@ -141,26 +165,95 @@ export interface GlobeOptions {
   onView?: (ra: number, dec: number) => void;
 }
 
+// Pixel-art stars: a five-point star and a four-point sparkle (for the brightest), 15 x 15 cells each.
+// Only the fill is drawn here; the dark outline is added around it.  y gold, d shade, h highlight, w white.
+const STAR_FIVE = [
+  "...............",
+  ".......y.......",
+  ".......y.......",
+  "......yhy......",
+  "......yhy......",
+  ".yyyyyhwhyyyyy.",
+  "..yyyyhhhyyyd..",
+  "...yyyyhyyyd...",
+  "....yyyyyydd...",
+  "....yyyyyydd...",
+  "...yyyy.yyddd..",
+  "...yyy...yddd..",
+  "..yyy.....ddd..",
+  "...............",
+  "...............",
+];
+const STAR_GRID = 15;
+
+function sparkleCell(x: number, y: number): string {
+  const dx = Math.abs(x - 7);
+  const dy = Math.abs(y - 7);
+  const d = dx + dy;
+  const lo = Math.min(dx, dy);
+  const hi = Math.max(dx, dy);
+  // A gold body that tapers into four long rays: three cells wide near the middle, one cell at the tips.
+  const inside = d <= 3 || (lo === 0 && hi <= 6) || (lo === 1 && hi <= 4);
+  if (!inside) return ".";
+  if (d <= 1) return "w";
+  if (d <= 2) return "h";
+  return x > 7 || y > 7 ? "d" : "y";
+}
+
+function starAtlas(): THREE.CanvasTexture {
+  const n = STAR_GRID;
+  const canvas = document.createElement("canvas");
+  canvas.width = 2 * n;
+  canvas.height = n;
+  const c = canvas.getContext("2d")!;
+  const ink: Record<string, string> = { y: "#f6b92b", d: "#d4860f", h: "#ffe27a", w: "#fffbe6" };
+  const shapes = [
+    (x: number, y: number) => STAR_FIVE[y][x],
+    sparkleCell,
+  ];
+  shapes.forEach((cell, k) => {
+    const filled = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < n && y < n && cell(x, y) !== ".";
+    for (let y = 0; y < n; y++) {
+      for (let x = 0; x < n; x++) {
+        const v = cell(x, y);
+        if (v !== ".") c.fillStyle = ink[v];
+        else if (filled(x - 1, y) || filled(x + 1, y) || filled(x, y - 1) || filled(x, y + 1)) c.fillStyle = "#1b1640";
+        else continue;
+        c.fillRect(k * n + x, y, 1, 1);
+      }
+    }
+  });
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.NoColorSpace; // sampled and written as drawn
+  tex.magFilter = THREE.NearestFilter;
+  tex.minFilter = THREE.NearestFilter;
+  tex.generateMipmaps = false;
+  return tex;
+}
+
 const STAR_VERT = `
 attribute float size;
-attribute vec3 aColor;
+attribute float aShape;
 uniform float uPR;
-varying vec3 vC;
+varying float vShape;
 varying float vA;
 void main() {
-  vC = aColor;
+  vShape = aShape;
   float f = dot(normalize(position), normalize(cameraPosition));
-  vA = mix(0.2, 1.0, smoothstep(-0.15, 0.25, f));
-  gl_PointSize = size * uPR;
+  vA = mix(0.25, 1.0, smoothstep(-0.15, 0.25, f));
+  // Whole multiples of the 15-cell grid, so every star pixel lands on screen pixels.
+  gl_PointSize = 15.0 * max(1.0, floor(size * uPR / 15.0 + 0.5));
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }`;
 const STAR_FRAG = `
-varying vec3 vC;
+uniform sampler2D uTex;
+varying float vShape;
 varying float vA;
 void main() {
-  float d = length(gl_PointCoord - 0.5);
-  if (d > 0.5) discard;
-  gl_FragColor = vec4(vC, smoothstep(0.5, 0.12, d) * vA);
+  vec2 uv = vec2((min(gl_PointCoord.x, 0.999) + vShape) * 0.5, 1.0 - gl_PointCoord.y);
+  vec4 t = texture2D(uTex, uv);
+  if (t.a < 0.5) discard;
+  gl_FragColor = vec4(t.rgb, vA);
 }`;
 
 export class Globe {
@@ -179,6 +272,9 @@ export class Globe {
   private readonly controls: OrbitControls;
   private readonly observer: ResizeObserver;
   private readonly starMat: THREE.ShaderMaterial;
+  private readonly starTex = starAtlas();
+  /** Thick lines (ecliptic, galactic equator) need the view size in pixels. */
+  private readonly fatLines: LineMaterial[] = [];
   private readonly pinTex: THREE.CanvasTexture;
   private readonly tileTex: THREE.CanvasTexture;
   private readonly markTex: THREE.CanvasTexture;
@@ -230,7 +326,7 @@ export class Globe {
       fragmentShader: STAR_FRAG,
       transparent: true,
       depthWrite: false,
-      uniforms: { uPR: { value: this.renderer.getPixelRatio() } },
+      uniforms: { uPR: { value: this.renderer.getPixelRatio() }, uTex: { value: this.starTex } },
     });
     this.scene.add(this.starGroup, this.pinGroup);
 
@@ -309,8 +405,7 @@ export class Globe {
       const l = 2 * Math.PI * u;
       return eqXyzToView(Math.cos(l), Math.sin(l) * Math.cos(OBLIQUITY), Math.sin(l) * Math.sin(OBLIQUITY));
     }, 180);
-    grid.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(ecl),
-      new THREE.LineBasicMaterial({ color: ORANGE, transparent: true, opacity: 0.6, depthWrite: false })));
+    grid.add(this.fatLine(ecl, ORANGE, false));
     const gal = linePoints((u) => {
       const l = 2 * Math.PI * u;
       const g = [Math.cos(l), Math.sin(l), 0];
@@ -319,27 +414,24 @@ export class Globe {
       const z = EQ2GAL[0][2] * g[0] + EQ2GAL[1][2] * g[1];
       return eqXyzToView(x, y, z);
     }, 180);
-    const galLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(gal),
-      new THREE.LineDashedMaterial({ color: BLUE, transparent: true, opacity: 0.8, dashSize: 0.035, gapSize: 0.025, depthWrite: false }));
-    galLine.computeLineDistances();
-    grid.add(galLine);
+    grid.add(this.fatLine(gal, BLUE, true));
     this.scene.add(grid);
 
-    // Labels: RA every 2 h on the equator, Dec every 30 degrees on the RA 0 meridian, line names.
+    // Labels: RA every 2 h on the equator, in the site's mono, Dec every 30 degrees on the RA 0 meridian, line names.
     const labels = new THREE.Group();
     for (let ra = 0; ra < 360; ra += 30) {
-      const s = textSprite(`${ra / 15}h`, { height: 0.026, color: "#9db6cc" });
+      const s = textSprite(`${ra / 15}h`, { height: 0.026, color: "#9db6cc", font: "mono" });
       s.position.copy(radecToVec(ra, 0, 1.03));
       labels.add(s);
     }
     for (const dec of [-60, -30, 30, 60]) {
-      const s = textSprite(`${dec > 0 ? "+" : "−"}${Math.abs(dec)}°`, { height: 0.026, color: "#9db6cc" });
+      const s = textSprite(`${dec > 0 ? "+" : "−"}${Math.abs(dec)}°`, { height: 0.026, color: "#9db6cc", font: "mono" });
       s.position.copy(radecToVec(15, dec, 1.03));
       labels.add(s);
     }
-    const eclLabel = textSprite("ecliptic", { height: 0.026, color: "#f3b07a" });
+    const eclLabel = textSprite("ECLIPTIC", { height: 0.03, color: "#ffb46e", font: "pixel" });
     eclLabel.position.copy(eqXyzToView(Math.cos(1.9), Math.sin(1.9) * Math.cos(OBLIQUITY), Math.sin(1.9) * Math.sin(OBLIQUITY)).multiplyScalar(1.04));
-    const galLabel = textSprite("galactic equator", { height: 0.026, color: "#7fc0ec" });
+    const galLabel = textSprite("GALACTIC EQUATOR", { height: 0.03, color: "#8fd3ff", font: "pixel" });
     const lg = 0.75;
     const gx = [Math.cos(lg), Math.sin(lg), 0];
     galLabel.position.copy(eqXyzToView(
@@ -351,6 +443,20 @@ export class Globe {
     this.scene.add(labels);
   }
 
+  /** A thick line along the sphere (WebGL's own lines are always one pixel wide). */
+  private fatLine(pts: THREE.Vector3[], color: number, dashed: boolean): Line2 {
+    const geo = new LineGeometry();
+    geo.setPositions(pts.flatMap((p) => [p.x, p.y, p.z]));
+    const mat = new LineMaterial({
+      color, linewidth: 3, transparent: true, opacity: 0.95, depthWrite: false,
+      dashed, dashSize: 0.045, gapSize: 0.03,
+    });
+    this.fatLines.push(mat);
+    const line = new Line2(geo, mat);
+    if (dashed) line.computeLineDistances();
+    return line;
+  }
+
   /** Real bright stars (see /api/sky/bright_stars).  Replaces any earlier set. */
   setStars(data: BrightStars): void {
     for (const child of [...this.starGroup.children]) {
@@ -359,25 +465,25 @@ export class Globe {
     }
     const n = data.stars.length;
     const pos = new Float32Array(n * 3);
-    const col = new Float32Array(n * 3);
+    const shape = new Float32Array(n);
     const size = new Float32Array(n);
     data.stars.forEach((s, i) => {
       const v = radecToVec(s.ra_deg, s.dec_deg, 1.0);
       pos.set([v.x, v.y, v.z], i * 3);
-      const bright = Math.max(0, Math.min(1, (3 - s.mag) / 4));
-      col.set([0.78 + 0.22 * bright, 0.87 + 0.13 * bright, 1.0], i * 3);
-      size[i] = Math.max(2.4, Math.min(11, 7.2 - 1.4 * s.mag));
+      // The brightest stars twinkle as four-point sparkles; the rest are five-point stars.
+      shape[i] = s.mag < 0.5 ? 1 : 0;
+      size[i] = s.mag < 0.5 ? 30 : s.mag < 1.2 ? 22 : 15;
     });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    geo.setAttribute("aColor", new THREE.BufferAttribute(col, 3));
+    geo.setAttribute("aShape", new THREE.BufferAttribute(shape, 1));
     geo.setAttribute("size", new THREE.BufferAttribute(size, 1));
     // The material is shared and disposed with the globe, not with the points.
     this.starGroup.add(new THREE.Points(geo, this.starMat));
     for (const s of data.stars) {
       if (!s.name || s.mag > 1.7) continue;
-      const label = textSprite(s.name, { height: 0.022, color: "#e4eef7" });
-      label.center.set(-0.06, 0.5);
+      const label = textSprite(s.name, { height: 0.024, color: "#f1f4fb", font: "sans" });
+      label.center.set(-0.16, 0.5);
       label.position.copy(radecToVec(s.ra_deg, s.dec_deg, 1.0));
       this.starGroup.add(label);
     }
@@ -409,7 +515,7 @@ export class Globe {
       this.pinGroup.add(sprite);
       let label: THREE.Sprite | null = null;
       if (target) {
-        label = textSprite(pin.label, { height: 0.03, color: "#ffd2a8", bold: true });
+        label = textSprite(pin.label, { height: 0.026, color: "#ffd2a8", font: "pixel" });
         label.center.set(-0.08, 0.5);
         label.position.copy(dir).multiplyScalar(1.004);
         this.pinGroup.add(label);
@@ -553,6 +659,7 @@ export class Globe {
     this.renderer.setSize(w, h, false);
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    for (const m of this.fatLines) m.resolution.set(w, h);
   }
 
   /** Start or stop the render loop.  A hidden scene must not draw. */
@@ -625,6 +732,7 @@ export class Globe {
       }
     });
     this.starMat.dispose();
+    this.starTex.dispose();
     this.pinTex.dispose();
     this.tileTex.dispose();
     this.markTex.dispose();

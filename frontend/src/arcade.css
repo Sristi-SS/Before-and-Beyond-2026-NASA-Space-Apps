@@ -159,5 +159,11 @@ button > .help-dot { background: #000; }
 
 .glossary-list dt { color: var(--glow); }
 
+/* Globe legend: the two sky lines, bold and in their line colours, as drawn on the globe. */
+.gl-legend .key-line { font-weight: 700; }
+.gl-legend .key-line.ecl { color: #ffb46e; }
+.gl-legend .key-line.gal { color: #8fd3ff; }
+.key-ecl, .key-gal { width: 20px; border-top-width: 3px; }
+
 /* Projection mode keeps its own high-contrast walls. */
 body.projection .panel, body.projection .deck { border: 4px double #fff; }
