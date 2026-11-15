@@ -4,6 +4,11 @@ A public, no-login web tool that turns real SPHEREx archival images of one
 patch of sky into a three-dimensional **time cube**, then lets you test whether
 something in that cube is moving by **shifting and stacking** the frames.
 
+**Explore how a patch of infrared sky changes over time and test whether a source follows a chosen motion.**
+
+[Launch the Website](https://spherex-time-cube.onrender.com/) ·
+[View the Demo Video](Placeholder Youtube Link)
+
 Built for the 2026 NASA Space Apps Challenge, *Planet X and SPHEREx*.
 
 > This is an independent hackathon project, not an official NASA product. It
