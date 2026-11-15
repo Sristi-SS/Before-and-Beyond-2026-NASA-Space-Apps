@@ -5,6 +5,7 @@ import { initShare, initShortcuts, Sonifier } from "./extras";
 import { flushState } from "./state";
 import { showScene } from "./scenes";
 import { initHelp } from "./help";
+import { initIntro } from "./intro";
 import { CandidatePanel } from "./candidates";
 import { UpdatePanel } from "./updates";
 import * as api from "./api";
@@ -268,6 +269,7 @@ dossierRefresh = wireDossier({
 initScenes();
 initShell();
 initHelp();
+initIntro();
 void init();
 
 async function init(): Promise<void> {

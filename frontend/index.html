@@ -384,13 +384,11 @@
         </p>
         <div class="hero">
           <p class="eyebrow">NASA Space Apps 2026 &middot; Planet X and SPHEREx</p>
-          <h2>Find what moves<br /><em>in the infrared sky.</em></h2>
           <p>Real NASA images of one sky patch, stacked through time. Things that move stand out.</p>
           <div class="hero-cta">
-            <button type="button" class="primary" data-auto-demo>Watch the 1-minute demo</button>
-            <button type="button" data-open-target="wise0855">Open the fastest mover</button>
+            <button type="button" class="primary" data-intro-start>Start with Barnard's Star</button>
           </div>
-          <p class="hero-note">Or drag the globe and click a pin.</p>
+          <p class="hero-note">Or drag the globe and click a pin. <button type="button" class="linkish" data-intro-replay>Replay the intro</button></p>
         </div>
         <div class="gl-foot">
           <div id="globe-controls" class="gl-controls" role="group" aria-label="Globe controls">
@@ -557,6 +555,55 @@
     <button id="handle-left" type="button" class="dock-handle left" hidden>Controls</button>
     <button id="handle-right" type="button" class="dock-handle right" hidden>Tools</button>
     <div id="help-pop" class="help-pop" role="tooltip" hidden></div>
+
+    <!-- ============================ First-visit intro (src/intro.ts) ============================ -->
+    <div id="intro" class="intro" role="dialog" aria-modal="true" aria-label="Introduction to SPHEREx Time Cube" hidden>
+      <div class="intro-top">
+        <p class="intro-brand">SPHEREx Time Cube</p>
+        <button type="button" class="intro-skip" data-intro-skip>Skip intro</button>
+      </div>
+      <div class="intro-body">
+        <figure class="intro-screen">
+          <div class="intro-frame">
+            <canvas role="img" aria-label="Real infrared images of the sky around Barnard's Star"></canvas>
+            <p class="intro-msg" data-intro-msg hidden></p>
+          </div>
+          <div class="intro-transport">
+            <button type="button" class="intro-btn" data-intro-play aria-pressed="false">Play</button>
+            <input type="range" min="0" max="0" step="1" value="0" data-intro-scrub aria-label="Frame, oldest to newest" />
+          </div>
+          <p class="intro-small intro-hud" data-intro-hud></p>
+          <figcaption class="intro-small">
+            Real infrared images, north up, 13&prime; across: WISE at 4.6&nbsp;&micro;m, then SPHEREx at 4.4&ndash;5.0&nbsp;&micro;m. False colour; each frame scaled on its own.
+            <span class="intro-key" aria-hidden="true"></span> Catalogue position of Barnard's Star (SIMBAD), not fitted to these images.
+          </figcaption>
+        </figure>
+
+        <div class="intro-cards">
+          <section data-card>
+            <h2 tabindex="-1">Stack time</h2>
+            <p>Real NASA telescope images of one patch of sky, stacked through time, so things that move stand out. Watch the star in the amber ring.</p>
+            <p>Far-away stars hold still. Something close to the Sun drifts a little every year. That drift is how a cold, dark neighbour of the Sun could give itself away.</p>
+          </section>
+          <section data-card hidden>
+            <h2 tabindex="-1">Check it</h2>
+            <p>The bright dot climbing the picture is Barnard's Star, six light-years away. The amber line is where star catalogues say it should be each year. The star stays on the line.</p>
+            <p class="intro-small">That is the test. When the tool finds a drift that no catalogue explains, it calls it a <strong>candidate</strong>. A candidate is not a discovery until other wavelengths and catalogues confirm it.</p>
+          </section>
+          <section data-card hidden>
+            <h2 tabindex="-1">Your turn</h2>
+            <p>Open the same images in the full tool, as a 3D cube you can turn. Barnard's Star's motion is already known, so you can check the tool gets it right before you trust it on anything new.</p>
+            <button type="button" class="intro-btn primary" data-intro-start>Start with Barnard's Star</button>
+            <p class="intro-small">These images are saved, so it opens without waiting for the archive.</p>
+          </section>
+          <div class="intro-nav">
+            <button type="button" class="intro-btn ghost" data-intro-back>&lsaquo; Back</button>
+            <span class="intro-small" data-intro-step></span>
+            <button type="button" class="intro-btn primary" data-intro-next>Next &rsaquo;</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <footer class="footer">
       <span>Data: NASA/IPAC IRSA SPHEREx, unWISE, Gaia DR3. Not an official NASA product.</span>
