@@ -1,0 +1,163 @@
+/* AI-assistance: this file was written with AI assistance; see README.md "AI assistance". */
+/*
+ * Arcade theme, laid over styles.css (loaded after it).  One look for the whole site,
+ * the same as the first-visit intro (intro.css):
+ *   - black screen; every bar and panel is a blue double "maze wall" with a soft glow;
+ *   - titles in the pixel font, yellow with a dark offset shadow;
+ *   - rows of pellet dots beside section titles;
+ *   - cyan for anything you press, so amber and azure stay free for data.
+ * Reading text (descriptions, numbers, hints) stays in the site's sans and mono.
+ * The white print dossier is left alone.
+ */
+:root {
+  --wall: #2f5bff;
+  --wall-glow: rgba(47, 91, 255, 0.5);
+  --glow: #5ef2ff;
+  --title: #ffd23f;
+  --title-shadow: #3a2aa6;
+  --pellet: #ffe2b8;
+  --pixel: "Press Start 2P", ui-monospace, monospace;
+  --pellets: radial-gradient(circle, var(--pellet) 1.3px, transparent 1.8px) 0 50% / 12px 6px repeat-x;
+
+  --void: #000;
+  --void-2: #03040a;
+  --glass: rgba(0, 0, 0, 0.94);
+  --glass-2: rgba(4, 6, 18, 0.9);
+  --hair: rgba(47, 91, 255, 0.38);
+  --hair-2: rgba(47, 91, 255, 0.75);
+  --lumen: var(--glow);
+  --lumen-dim: rgba(94, 242, 255, 0.14);
+  --radius: 8px;
+}
+
+body {
+  background: radial-gradient(1000px 640px at 50% 42%, #070b22 0%, transparent 65%), #000;
+}
+
+/* ------------------------------------------------------------ walls */
+.panel, .topbar > *, .deck, .view-seg, .tour, .help-pop, .dock-handle {
+  background: var(--glass);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 4px double var(--wall);
+  box-shadow: 0 0 12px var(--wall-glow), inset 0 0 10px rgba(47, 91, 255, 0.22);
+}
+.topbar > * { border-radius: 10px; }
+.deck, .tour { border-radius: 12px; }
+.view-seg { border-radius: 10px; }
+.view-stub, .colour-note { background: var(--glass); border: 4px double var(--wall); border-radius: 10px; }
+
+/* ------------------------------------------------------------ titles */
+.brand h1 {
+  font: 12px/1.4 var(--pixel); text-transform: uppercase; color: var(--title);
+  text-shadow: 2px 2px 0 var(--title-shadow);
+}
+.brand p { margin-top: 3px; }
+.brand-mark { border-radius: 4px; border: 2px solid var(--wall); background: #000; }
+.brand-mark i { border-radius: 0; }
+
+/* Section titles: pixel, yellow, followed by a row of pellets to the edge. */
+.dock > section > h2, .dock-head > h2, .sheet .sp-head h2, .checklist-wrap h3, .cand-detail h3, .scene-side h3 {
+  display: flex; align-items: center; gap: 10px;
+  font: 9px/1.6 var(--pixel); letter-spacing: 0; text-transform: uppercase; color: var(--title);
+  text-shadow: 1px 1px 0 var(--title-shadow);
+}
+.dock > section > h2::after, .dock-head > h2::after, .checklist-wrap h3::after, .scene-side h3::after {
+  content: ""; flex: 1; min-width: 24px; height: 6px; background: var(--pellets); opacity: 0.75;
+}
+.dock > section > h2:not(:first-child) { border-top: 0; }
+
+details.fold { border-top: 0; }
+details.fold > summary, #glossary summary {
+  font: 9px/1.6 var(--pixel); letter-spacing: 0; color: var(--ink-2);
+}
+details.fold > summary::after { font: 10px/1 var(--pixel); color: var(--glow); }
+details.fold > summary:hover { color: var(--ink); }
+
+.empty-state h2, .hero h2 {
+  font-family: var(--pixel); font-weight: 400; letter-spacing: 0; text-transform: uppercase;
+  font-size: clamp(18px, 2.4vw, 32px); line-height: 1.35; color: var(--title);
+  text-shadow: 3px 3px 0 var(--title-shadow);
+}
+.empty-state h2 em, .hero h2 em { font-family: inherit; font-style: normal; font-size: 1em; color: var(--glow); text-shadow: 3px 3px 0 #06325a; }
+.view-stub h2, .tour h2 {
+  font: 14px/1.5 var(--pixel); letter-spacing: 0; text-transform: uppercase; color: var(--title);
+  text-shadow: 2px 2px 0 var(--title-shadow);
+}
+.eyebrow { font: 9px/1.6 var(--pixel); letter-spacing: 0; color: var(--glow); }
+.cand-rank { font: 14px/1 var(--pixel); color: var(--glow); }
+
+/* ------------------------------------------------------------ bars and tabs */
+.scene-nav button, .view-seg button, .dock-tabs button {
+  font-family: var(--pixel); font-weight: 400; text-transform: uppercase; letter-spacing: 0;
+}
+.scene-nav button { font-size: 10px; padding: 0.62rem 0.85rem; border-radius: 4px; }
+.scene-nav button[aria-current="page"] { color: #000; background: var(--glow); box-shadow: 0 0 12px rgba(94, 242, 255, 0.45); }
+.view-seg button { font-size: 9px; padding: 0.6rem 0.75rem; border-radius: 4px; }
+.view-seg button[aria-pressed="true"] { background: var(--glow); color: #000; }
+.dock-tabs button { font-size: 9px; padding: 0.6rem 0.5rem; border-radius: 4px; }
+.dock-tabs button[aria-selected="true"] { color: var(--glow); font-weight: 400; }
+.dock-tabs button[aria-selected="true"]::after { background: var(--glow); height: 3px; border-radius: 0; box-shadow: 0 0 8px var(--glow); }
+.topbar-meta button { border-radius: 4px; }
+.topbar-meta button[aria-pressed="true"] { color: var(--glow); background: var(--lumen-dim); }
+.dock-handle { font: 9px/1 var(--pixel); color: var(--glow); border-radius: 8px; }
+
+/* ------------------------------------------------------------ controls */
+input, select, button { border-radius: 4px; }
+input:not([type="range"]):not([type="checkbox"]), select { background: #000; border: 2px solid var(--hair); }
+input:not([type="range"]):not([type="checkbox"]):focus, select:focus { border-color: var(--wall); }
+button { border-width: 2px; background: rgba(47, 91, 255, 0.07); }
+button:hover:not(:disabled) { border-color: var(--wall); background: rgba(47, 91, 255, 0.16); }
+button.primary, .hero-cta button.primary {
+  font: 9px/1.5 var(--pixel); text-transform: uppercase; letter-spacing: 0;
+  background: var(--glow); color: #000; border-color: var(--glow); padding: 0.75rem 0.9rem;
+  box-shadow: 0 0 14px rgba(94, 242, 255, 0.35);
+}
+button.primary:hover:not(:disabled), .hero-cta button.primary:hover:not(:disabled) {
+  background: #fff; border-color: #fff; box-shadow: 0 0 20px rgba(94, 242, 255, 0.6);
+}
+button.ghost { background: transparent; }
+button.chip { border-radius: 4px; border-width: 1px; }
+button.chip[aria-pressed="true"] { background: var(--glow); color: #000; border-color: var(--glow); }
+.hero-cta button { border-radius: 4px; }
+.gl-controls button { border-radius: 4px; background: #000; backdrop-filter: none; border: 2px solid var(--hair); }
+.cand { border-radius: 6px; }
+.pick, .metric, .cand-detail { border-radius: 6px; border: 2px solid var(--hair); background: rgba(47, 91, 255, 0.05); }
+.badge { border-radius: 4px; }
+
+.deck #play {
+  border-radius: 6px; font: 9px/1 var(--pixel); text-transform: uppercase;
+  background: var(--glow); color: #000; box-shadow: 0 0 14px rgba(94, 242, 255, 0.4);
+}
+.deck #play:hover:not(:disabled) { background: #fff; box-shadow: 0 0 22px rgba(94, 242, 255, 0.6); }
+
+/* Sliders: blue wall track, square cyan thumb.  The timeline keeps its colour ramp (first to last epoch). */
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 0; background: var(--hair-2); }
+input[type="range"]::-moz-range-track { height: 4px; border-radius: 0; background: var(--hair-2); }
+input[type="range"]::-webkit-slider-thumb {
+  width: 14px; height: 14px; margin-top: -5px; border-radius: 2px; background: var(--glow);
+  box-shadow: 0 0 8px rgba(94, 242, 255, 0.7);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 2px; background: var(--glow); box-shadow: 0 0 8px rgba(94, 242, 255, 0.7);
+}
+#timeline::-webkit-slider-runnable-track { border-radius: 0; }
+#timeline::-webkit-slider-thumb { width: 18px; height: 18px; margin-top: -7px; border-radius: 2px; background: #fff; box-shadow: 0 0 10px rgba(255, 255, 255, 0.7); }
+#timeline::-moz-range-thumb { width: 18px; height: 18px; border-radius: 2px; background: #fff; }
+
+/* ------------------------------------------------------------ tour and help */
+.tour { background: #000; }
+.tour::before {
+  left: 16px; right: 16px; top: 6px; height: 6px; border-radius: 0; background: var(--pellets); opacity: 0.8;
+}
+.tour { padding-top: 1.3rem; }
+/* The "?" tips sit on almost every control, so they stay quiet until hovered. */
+.help-dot { border-radius: 2px; background: #000; border-color: var(--hair); color: var(--ink-3); font: 7px/1 var(--pixel); }
+button > .help-dot { background: #000; }
+.help-dot:hover, .help-dot.on { background: var(--glow); color: #000; }
+.help-pop { border-radius: 8px; }
+
+.glossary-list dt { color: var(--glow); }
+
+/* Projection mode keeps its own high-contrast walls. */
+body.projection .panel, body.projection .deck { border: 4px double #fff; }

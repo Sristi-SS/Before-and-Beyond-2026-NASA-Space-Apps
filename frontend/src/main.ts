@@ -1,5 +1,7 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
+import "@fontsource/press-start-2p/400.css";
 import "./styles.css";
+import "./arcade.css";
 import { initShell, showTab, syncView } from "./shell";
 import { initShare, initShortcuts, Sonifier } from "./extras";
 import { flushState } from "./state";

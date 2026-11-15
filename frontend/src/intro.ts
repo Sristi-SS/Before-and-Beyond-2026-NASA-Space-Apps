@@ -3,7 +3,6 @@
 // The movie is real archive data (WISE W2 epochs, then SPHEREx D6 frames) from the saved cube;
 // the amber line is the catalogue track (SIMBAD proper motion), drawn, never fitted.
 // If the frames cannot load, the screen says so and shows nothing in their place.
-import "@fontsource/press-start-2p/400.css";
 import "./intro.css";
 import * as api from "./api";
 import { drawSlice } from "./colormap";

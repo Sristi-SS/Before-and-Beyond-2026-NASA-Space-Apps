@@ -10,10 +10,11 @@
   --ix-black: #000;
   --ix-ink: #eceff7;
   --ix-ink-2: #b4bcd2;
-  --ix-wall: #2d4dff;
-  --ix-glow: #5ef2ff;
-  --ix-data: #ffa24a;
-  --ix-pixel: "Press Start 2P", ui-monospace, monospace;
+  /* Shared with the rest of the site (arcade.css). */
+  --ix-wall: var(--wall);
+  --ix-glow: var(--glow);
+  --ix-data: var(--amber);
+  --ix-pixel: var(--pixel);
 
   position: fixed; inset: 0; z-index: 1000; overflow-y: auto;
   display: flex; flex-direction: column; gap: 16px;
@@ -25,7 +26,7 @@
 body.intro-open { overflow: hidden; }
 
 .intro-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.intro-brand { font: 12px/1.4 var(--ix-pixel); color: var(--ix-glow); text-transform: uppercase; }
+.intro-brand { font: 12px/1.4 var(--ix-pixel); color: var(--title); text-transform: uppercase; text-shadow: 2px 2px 0 var(--title-shadow); }
 .intro .intro-skip {
   background: none; border: 0; padding: 8px 0; color: var(--ix-ink-2);
   font: 14px/1.4 var(--sans); text-decoration: underline; text-underline-offset: 3px;
@@ -80,7 +81,7 @@ body.intro-open { overflow: hidden; }
 .intro-cards section[hidden] { display: none; }
 .intro .intro-cards h2 {
   font: 22px/1.45 var(--ix-pixel); letter-spacing: 0; text-transform: uppercase;
-  color: var(--ix-glow); text-shadow: 0 0 10px rgba(94, 242, 255, 0.55);
+  color: var(--title); text-shadow: 3px 3px 0 var(--title-shadow);
 }
 /* Headings take focus only so screen readers announce the new card; they are not controls. */
 .intro .intro-cards h2:focus, .intro .intro-cards h2:focus-visible { outline: none; }
