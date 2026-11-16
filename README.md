@@ -214,6 +214,21 @@ python -m pytest backend\tests -q -k real_frames          :: 4 to 12 min, needs 
 - NASA NEOWISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/neowise.html>
 - unWISE Time-Resolved Coadds (Release neo11, 2010–2024) <https://portal.nersc.gov/project/cosmo/temp/ameisner/neo11/>
 - unTimely Catalog & unWISE Data Products (IRSA DOI) <https://doi.org/10.26131/IRSA580>
+- ESA Gaia Archive TAP Service (Gaia DR3) <https://gea.esac.esa.int/tap-server/tap>
+- ESA Hipparcos Catalogue (VizieR I/239/hip_main) <https://cdsarc.cds.unistra.fr/viz-bin/cat/I/239>
+- CDS Sesame Name Resolver <https://cds.unistra.fr/cgi-bin/nph-sesame>
+- SIMBAD Astronomical Database (CDS) <https://simbad.cds.unistra.fr/>
+- General Catalogue of Variable Stars (GCVS) <https://www.sai.msu.su/gcvs/gcvs/>
+- Astropy: Python Astronomy Package <https://www.astropy.org/>
+- Reproject: Astropy Image Reprojection Library <https://reproject.readthedocs.io/>
+- PyVO: Virtual Observatory Access Library <https://pyvo.readthedocs.io/>
+- three.js 3D WebGL Library <https://threejs.org/>
+- FastAPI Web Framework <https://fastapi.tiangolo.com/>
+- NumPy Scientific Computing <https://numpy.org/>
+- SciPy Scientific Library <https://scipy.org/>
+- Matplotlib Visualization Library <https://matplotlib.org/>
+- Fontsource Open Source Fonts <https://fontsource.org/>
+- MAVLink Protocol & pymavlink <https://mavlink.io/en/>
 
 ## Future Possibilities
 
