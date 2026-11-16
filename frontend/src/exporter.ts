@@ -16,6 +16,8 @@ export interface ExportContext {
   /** Client-side stack for the tilt snap clip at (vx, vy). */
   stackAt: (vx: number, vy: number) => { data: Float32Array; npix: number } | null;
   say: (message: string) => void;
+  /** The picture to record for frame `i` in place of the plain frame (the Colour view building up), or null. */
+  movieCanvas?: (i: number) => HTMLCanvasElement | null;
 }
 
 const SIZE = 512;
@@ -47,12 +49,12 @@ function drawCaption(ctx: CanvasRenderingContext2D, lines: string[], simulated: 
   ctx.fillStyle = simulated ? "rgba(120,10,10,0.88)" : "rgba(8,13,19,0.85)";
   ctx.fillRect(0, SIZE - h, SIZE, h);
   ctx.fillStyle = "#ffffff";
-  ctx.font = "16px sans-serif";
+  ctx.font = "16px 'Nunito Variable', sans-serif";
   ctx.textBaseline = "top";
   lines.forEach((t, i) => ctx.fillText(t, 10, SIZE - h + 8 + i * lineH, SIZE - 20));
   if (simulated) {
     // A second, unmissable mark in the corner so a crop of the caption still carries it.
-    ctx.font = "bold 18px sans-serif";
+    ctx.font = "bold 18px 'Nunito Variable', sans-serif";
     ctx.fillStyle = "rgba(255,80,80,0.95)";
     ctx.fillText(SIM_LINE, 10, 8, SIZE - 20);
   }
@@ -175,7 +177,18 @@ export async function exportMovie(x: ExportContext): Promise<void> {
   x.say(`Recording ${frames.length} frames…`);
   const blob = await recordWebm(frames.length, (i, out) => {
     const f = frames[i];
-    paintFrame(out, scratch, f.data, npix, x.stretchFor(i), frameLines(f.meta, x.targetName(), sim), sim);
+    const lines = frameLines(f.meta, x.targetName(), sim);
+    const own = x.movieCanvas?.(i);
+    const g = own ? out.getContext("2d") : null;
+    if (own && g) {
+      g.imageSmoothingEnabled = false;
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, SIZE, SIZE);
+      g.drawImage(own, 0, 0, SIZE, SIZE);
+      drawCaption(g, lines, sim);
+    } else {
+      paintFrame(out, scratch, f.data, npix, x.stretchFor(i), lines, sim);
+    }
   }, 250);
   if (blob && blob.size > 0) {
     deliver(blob, `spherex-time-cube-${sim ? "SIMULATED-" : ""}movie.webm`);
@@ -257,7 +270,7 @@ export async function exportCanvasImage(x: ExportContext, src: HTMLCanvasElement
   g.fillStyle = sim ? "#780a0a" : "#080d13";
   g.fillRect(0, img, w, strip);
   g.fillStyle = "#fff";
-  g.font = "14px sans-serif";
+  g.font = "14px 'Nunito Variable', sans-serif";
   g.textBaseline = "top";
   lines.forEach((t, i) => g.fillText(t, 8, img + 6 + i * 24, w - 16));
   const blob = await new Promise<Blob | null>((res) => out.toBlob((b) => res(b), "image/png"));
@@ -267,6 +280,41 @@ export async function exportCanvasImage(x: ExportContext, src: HTMLCanvasElement
   }
   deliver(blob, `spherex-time-cube-${sim ? "SIMULATED-" : ""}${kind.replace(/\s+/g, "-")}.png`);
   x.say(`${kind} image saved.`);
+}
+
+/** PNG of a canvas exactly as it is on screen (the Colour or Compare picture), with a caption underneath. */
+export async function exportPicture(x: ExportContext, src: HTMLCanvasElement, name: string, lines: string[]): Promise<void> {
+  const sim = x.simActive();
+  const scale = Math.max(1, Math.round(1024 / src.width));
+  const w = src.width * scale;
+  const img = src.height * scale;
+  const all = [...lines, watermark(sim)];
+  const strip = 16 + all.length * 24;
+  const out = document.createElement("canvas");
+  out.width = w;
+  out.height = img + strip;
+  const g = out.getContext("2d");
+  if (!g) {
+    x.say("The picture could not be made.");
+    return;
+  }
+  g.imageSmoothingEnabled = false;
+  g.fillStyle = "#000";
+  g.fillRect(0, 0, w, out.height);
+  g.drawImage(src, 0, 0, w, img);
+  g.fillStyle = sim ? "#780a0a" : "#080d13";
+  g.fillRect(0, img, w, strip);
+  g.fillStyle = "#fff";
+  g.font = "16px 'Nunito Variable', sans-serif";
+  g.textBaseline = "top";
+  all.forEach((t, i) => g.fillText(t, 10, img + 8 + i * 24, w - 20));
+  const blob = await new Promise<Blob | null>((res) => out.toBlob((b) => res(b), "image/png"));
+  if (!blob) {
+    x.say("The picture could not be made.");
+    return;
+  }
+  deliver(blob, `spherex-time-cube-${sim ? "SIMULATED-" : ""}${name}.png`);
+  x.say("Picture saved.");
 }
 
 /** PNG of one picture of the cube, with its date and source underneath. */

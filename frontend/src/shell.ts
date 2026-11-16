@@ -1,7 +1,7 @@
 // AI-assistance: this file was written with AI assistance; see README.md "AI assistance".
 // The page shell: fonts, floating panels with tabs, the view switch, focus mode.
 // It only shows and hides things; it holds no science state.
-import "@fontsource-variable/bricolage-grotesque";
+import "@fontsource-variable/nunito";
 import "@fontsource/instrument-serif/400.css";
 import "@fontsource/instrument-serif/400-italic.css";
 import "@fontsource-variable/jetbrains-mono";

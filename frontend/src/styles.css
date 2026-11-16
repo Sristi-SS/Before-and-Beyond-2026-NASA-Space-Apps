@@ -44,7 +44,7 @@
   --pad-l: calc(var(--dock-l) + 2 * var(--gap));
   --pad-r: calc(var(--dock-r) + 2 * var(--gap));
 
-  --sans: "Bricolage Grotesque Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --sans: "Nunito Variable", "Nunito", "Segoe UI", system-ui, -apple-system, sans-serif;
   --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
   --mono: "JetBrains Mono Variable", ui-monospace, Consolas, monospace;
   font-family: var(--sans);

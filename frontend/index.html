@@ -31,7 +31,8 @@
         <span id="status-badge" class="badge" role="status" data-kind="online">checking&hellip;</span>
         <span id="hw-indicator" class="badge" role="status" hidden></span>
         <button id="tour-start" type="button" class="ghost" hidden>Tour</button>
-        <button id="help-toggle" type="button" class="ghost round" aria-pressed="true" aria-label="Show or hide the question-mark tips">?</button>
+        <button id="help-toggle" type="button" class="ghost" aria-pressed="false">Tips: off</button>
+        <button type="button" class="ghost" data-about-open>About</button>
         <button id="focus-toggle" type="button" class="ghost" aria-pressed="false" hidden>Focus</button>
         <button id="fullscreen-demo" type="button" class="ghost">Full screen</button>
       </div>
@@ -176,6 +177,7 @@
 
         <section data-pane="about" hidden>
           <h2>About these pictures</h2>
+          <p id="target-fact" class="fact"></p>
           <p class="hint">Every picture is real, public data from NASA's infrared archive. Nothing is drawn in, except in Practise mode, which is always marked SIMULATED.</p>
           <dl id="provenance" class="provenance">
             <dt>From</dt>
@@ -392,6 +394,11 @@
           <h3>Presets</h3>
           <p class="hint small">Saved cubes: they open instantly. Barnard's Star is the best first one.</p>
           <ul id="globe-cubes" class="plain-list"></ul>
+          <div id="fact-card" class="fact-card" aria-live="polite">
+            <h3>Did you know?</h3>
+            <p id="fact-text"></p>
+            <button id="fact-next" type="button" class="ghost">Another fact</button>
+          </div>
           <div class="row wrap" hidden>
             <button id="globe-quick" type="button" class="primary">Quick start: Barnard's Star</button>
             <button id="globe-tour" type="button" class="ghost">Guided tour</button>
@@ -488,10 +495,57 @@
       </div>
     </div>
 
+    <!-- ============================ About: makers, credits, feedback (src/about.ts) ============================ -->
+    <div id="about" class="about" role="dialog" aria-modal="true" aria-labelledby="about-title" hidden>
+      <div class="about-top">
+        <h2 id="about-title">About SPHEREx Time Cube</h2>
+        <button type="button" class="dock-close" data-about-close aria-label="Close the About page">X</button>
+      </div>
+      <div class="about-body">
+        <section>
+          <h3>What this is</h3>
+          <p>Real NASA telescope pictures of one small patch of sky, stacked through time, so that anything that moves or changes stands out.</p>
+          <p>Built for the 2026 NASA Space Apps Challenge, &ldquo;Planet X and SPHEREx&rdquo;.</p>
+        </section>
+        <section>
+          <h3>Who made it</h3>
+          <p id="team-name" class="hint"></p>
+          <ul id="creator-list" class="creator-list"></ul>
+        </section>
+        <section>
+          <h3>Credits and sources</h3>
+          <dl class="credits">
+            <dt>SPHEREx pictures</dt><dd>NASA/JPL-Caltech, from the NASA/IPAC Infrared Science Archive (IRSA).</dd>
+            <dt>Older pictures</dt><dd>unWISE time-resolved coadds of NASA's WISE and NEOWISE data, 2010 to 2024.</dd>
+            <dt>Star catalogues</dt><dd>Gaia DR3 (ESA, Gaia DPAC) for positions and motions; SIMBAD and Sesame (CDS, Strasbourg) for names; Hipparcos (ESA) for the bright stars on the globe.</dd>
+            <dt>Software</dt><dd>Astropy, reproject, NumPy, FastAPI, three.js and Vite.</dd>
+            <dt>Type</dt><dd>Press Start 2P, Nunito and JetBrains Mono, under the SIL Open Font License.</dd>
+            <dt>AI assistance</dt><dd>Parts of the code and text were written with AI assistance; see the README.</dd>
+          </dl>
+          <p class="hint small">Not an official NASA product. Moving objects shown here are candidates, not discoveries.</p>
+        </section>
+        <section class="feedback">
+          <h3>Report a bug or suggest an idea</h3>
+          <p class="hint">Tell us what went wrong, or what you would add. It opens as a public note on our GitHub page (a free GitHub account is needed), with a link to what you were looking at.</p>
+          <div class="chips" role="group" aria-label="Kind of note">
+            <button type="button" class="chip" data-fb-kind="bug" aria-pressed="true">A bug</button>
+            <button type="button" class="chip" data-fb-kind="idea" aria-pressed="false">An idea</button>
+          </div>
+          <textarea id="fb-text" rows="4" maxlength="1500" aria-label="Your note" placeholder="What happened, or what would you like?"></textarea>
+          <div class="row wrap">
+            <button id="fb-send" type="button" class="primary">Send on GitHub</button>
+            <a id="fb-list" class="link" target="_blank" rel="noreferrer">See what others have sent</a>
+          </div>
+          <p id="fb-status" class="hint small" role="status"></p>
+        </section>
+      </div>
+    </div>
+
     <footer class="footer">
-      <button type="button" class="footer-replay" data-intro-replay>Replay intro</button>
+      <button type="button" class="footer-replay" data-intro-replay>Tutorial</button>
       <span>Data: NASA/IPAC IRSA SPHEREx, unWISE, Gaia DR3. Not an official NASA product.</span>
       <span>Motion candidates only; follow-up needed.</span>
+      <button type="button" class="footer-link" data-about-open>Credits and feedback</button>
     </footer>
 
     <script type="module" src="/src/main.ts"></script>

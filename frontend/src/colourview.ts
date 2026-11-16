@@ -237,11 +237,14 @@ export class ChangePicture {
 
   /**
    * Draw the picture from every date up to and including `untilMjd` (all dates when omitted).
-   * Returns the number of dates used, or 0 when there are fewer than two dates.
+   * With `markNow`, whatever stands out on the last of those dates is drawn in white on top, so the
+   * picture shows where things are on that date as well as where they have been.
+   * Returns the number of dates used (0 when there are fewer than two dates in all) and how many
+   * pixels carry colour.
    */
-  draw(canvas: HTMLCanvasElement, untilMjd?: number): number {
+  draw(canvas: HTMLCanvasElement, untilMjd?: number, markNow = false): { dates: number; coloured: number } {
     const p = this.ready();
-    if (!p) return 0;
+    if (!p) return { dates: 0, coloured: 0 };
     const n = p.npix;
     const size = n * n;
     let m = p.mjds.length;
@@ -287,8 +290,10 @@ export class ChangePicture {
     if (canvas.width !== n) canvas.width = n;
     if (canvas.height !== n) canvas.height = n;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return 0;
+    if (!ctx) return { dates: 0, coloured: 0 };
     const image = ctx.createImageData(n, n);
+    const now = markNow ? p.excess[m - 1] : null;
+    let coloured = 0;
     for (let y = 0; y < n; y++) {
       const src = (n - 1 - y) * n; // row 0 of the data is the south edge
       for (let x = 0; x < n; x++) {
@@ -307,10 +312,18 @@ export class ChangePicture {
         } else {
           image.data[o] = image.data[o + 1] = image.data[o + 2] = g;
         }
+        if (a > 0.2) coloured++;
+        if (now) {
+          const b = (now[i] - T_START) / (T_FULL - T_START);
+          if (b > 0) {
+            const k = Math.pow(Math.min(1, b), 0.6);
+            for (let c = 0; c < 3; c++) image.data[o + c] = image.data[o + c] * (1 - k) + 255 * k;
+          }
+        }
         image.data[o + 3] = 255;
       }
     }
     ctx.putImageData(image, 0, 0);
-    return m;
+    return { dates: m, coloured };
   }
 }

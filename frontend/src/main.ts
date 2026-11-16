@@ -25,7 +25,11 @@ import { compass, describeMap, markPeak, MotionMapView, peakPixel } from "./moti
 import { PixelPicker, type Pixel } from "./picker";
 import { reveal } from "./shell";
 import { Simulator } from "./simulator";
-import { exportFrame, wireExports } from "./exporter";
+import { exportFrame, exportPicture, wireExports } from "./exporter";
+import { initStarfield } from "./starfield";
+import { initEggs } from "./eggs";
+import { factFor, initFacts } from "./facts";
+import { initAbout } from "./about";
 import { wireDossier } from "./dossier";
 import { SpectrumPanel, type PanelTab } from "./spectrumpanel";
 import { initScenes, registerOpenJob, showScene } from "./scenes";
@@ -114,7 +118,9 @@ const provWise = el<HTMLElement>("prov-wise");
 const provCurrent = el<HTMLElement>("prov-current");
 const compareWrap = el<HTMLDivElement>("compare-wrap");
 
+initStarfield();
 const state = readState();
+const colourScratch = document.createElement("canvas");
 const cubeView = new CubeView(viewport);
 const mapView = new MotionMapView(el<HTMLCanvasElement>("map-canvas"), (v) => {
   vxInput.value = String(v.vx);
@@ -250,6 +256,12 @@ const exportCtx = {
     el<HTMLElement>("export-status").textContent = m;
     shareStatus.textContent = m;
   },
+  // In the Colour view the movie is the picture building up, date by date.
+  movieCanvas: (i: number) => {
+    if (viewInput.value !== "colour" || !(movie || axisInput.value === "time") || !slicesMeta[i]) return null;
+    changePicture.draw(colourScratch, slicesMeta[i].mjd, true);
+    return colourScratch;
+  },
 };
 wireExports(exportCtx, { movie: "save-movie", tilt: "save-tilt-img", snap: "tilt-snap", map: "save-map-img", tiltCanvas: "tilt-canvas", mapCanvas: "map-canvas" });
 dossierRefresh = wireDossier({
@@ -263,7 +275,23 @@ dossierRefresh = wireDossier({
   velocity: exportCtx.velocity,
   say: exportCtx.say,
 }).refresh;
-el<HTMLButtonElement>("save-frame").addEventListener("click", () => void exportFrame(exportCtx, Number(timeline.value)));
+/** Save picture: what is on screen in this view (the Colour or Compare picture, or the picture on the timeline). */
+async function savePicture(): Promise<void> {
+  const view = viewInput.value as View;
+  const name = exportCtx.targetName() || "custom position";
+  if (view === "colour" && !colourCanvas.hidden) {
+    const dates = slicesMeta.map((m) => m.obs_time.slice(0, 10)).sort();
+    await exportPicture(exportCtx, colourCanvas, "colour", [
+      `${name}  |  what appeared, and when  |  ${dates[0]} to ${dates[dates.length - 1]}`,
+      "grey: the sky that never changes  |  blue: early dates  |  orange: late dates",
+    ]);
+    return;
+  }
+  const shot = view === "compare" && !compareWrap.hidden ? compareView.snapshot() : null;
+  if (shot) await exportPicture(exportCtx, shot, "compare", [`${name}  |  before, after, what changed`, compareView.summary]);
+  else await exportFrame(exportCtx, Number(timeline.value));
+}
+el<HTMLButtonElement>("save-frame").addEventListener("click", () => void savePicture());
 const setShareOpen = (open: boolean): void => {
   shareMenu.hidden = !open;
   shareToggle.setAttribute("aria-expanded", String(open));
@@ -281,6 +309,9 @@ initShell();
 initNav();
 initHelp();
 initIntro();
+initAbout();
+initFacts();
+initEggs();
 void init();
 
 
@@ -461,6 +492,7 @@ async function openJob(key: string, hydrate: boolean): Promise<void> {
   jobKey = key;
   jobStatus = status;
   spectrumPanel.reset(key);
+  el<HTMLElement>("target-fact").textContent = factFor(status.target?.name) ?? "";
   gaiaData = null;
   gaiaLoad = null;
   checklistBox.hidden = true;
@@ -853,12 +885,19 @@ const VIEW_DESC: Record<View, string> = {
 };
 
 function drawColour(): void {
-  const byDate = movie || axisInput.value === "time";
-  const until = colourAll || !byDate ? undefined : slicesMeta[Number(timeline.value)]?.mjd;
-  if (changePicture.draw(colourCanvas, until) === 0) {
+  const building = !colourAll && (movie || axisInput.value === "time");
+  const meta = slicesMeta[Number(timeline.value)];
+  const r = changePicture.draw(colourCanvas, building ? meta?.mjd : undefined, building);
+  if (r.dates === 0) {
     colourCanvas.hidden = true;
     showStub("Colour needs more dates", "This set has fewer than two dates. Pick another set under Controls, Pictures.");
+    return;
   }
+  viewDesc.textContent = building && meta
+    ? `Building up: dates to ${meta.obs_time.slice(0, 10)} (${r.dates} of ${changePicture.count}). White: where something is on this date. Blue to orange: where it has been.`
+    : r.coloured > 0
+      ? VIEW_DESC.colour
+      : "Grey is the sky that never changes. Nothing in this set moved far enough to leave a coloured trail. Try the 16-year pictures under Controls, Pictures.";
 }
 
 function applyViewMode(): void {

@@ -81,12 +81,25 @@ details.fold { border-top: 1px solid var(--line-1); padding-top: 0.6rem; }
 .share-menu button { text-align: left; }
 .share-menu .hint { min-height: 0; }
 
-/* Quiet "Replay intro", bottom left. */
+/* Bottom strip: a real Tutorial button on the left, the data line, and the way to credits and feedback. */
+.footer { bottom: 9px; gap: 1rem; font-size: 0.68rem; align-items: center; }
 .footer-replay {
-  pointer-events: auto; position: fixed; left: 14px; bottom: 1px; padding: 2px 4px; border: 0; background: none;
-  font-size: 0.62rem; color: var(--ink-3); text-decoration: underline; text-underline-offset: 2px;
+  pointer-events: auto; position: fixed; left: 14px; bottom: 6px; padding: 7px 10px; border: 1px solid var(--line-2); border-radius: 4px;
+  font: 8px/1 var(--pixel); text-transform: uppercase; color: var(--glow); background: rgba(3, 5, 12, 0.92);
 }
-.footer-replay:hover:not(:disabled) { background: none; color: var(--ink); }
+.footer-replay:hover:not(:disabled) { background: var(--glow); border-color: var(--glow); color: #000; }
+.footer-link {
+  pointer-events: auto; border: 0; background: none; padding: 0; font-size: inherit; color: var(--ink-2);
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.footer-link:hover:not(:disabled) { background: none; color: var(--ink); }
+@media (min-width: 921px) {
+  :root { --foot: 38px; }
+  .dock, .deck { bottom: var(--foot); }
+  .stage { --area-bottom: calc(var(--deck-h) + var(--foot) + var(--gap)); }
+  .gl-foot { bottom: calc(var(--foot) + 6px); }
+  .tour { bottom: calc(var(--foot) + 8px); }
+}
 
 /* ------------------------------------------------------------ panels */
 .group-picker { display: grid; gap: 0.7rem; }
@@ -131,7 +144,7 @@ button.chip.movie { border-style: solid; }
 /* ------------------------------------------------------------ the spectrum: a side panel, not a sheet over the picture */
 @media (min-width: 921px) {
   .sheet {
-    left: auto; right: var(--gap); top: var(--top); bottom: var(--gap); width: var(--sheet-w); max-height: none;
+    left: auto; right: var(--gap); top: var(--top); bottom: var(--foot); width: var(--sheet-w); max-height: none;
     border: 1px solid var(--line-2);
   }
   body[data-scene="cube"]:has(#spectrum-panel:not([hidden])) { --pad-r: calc(var(--sheet-w) + 2 * var(--gap)); }
@@ -176,4 +189,50 @@ button.chip.movie { border-style: solid; }
   .cmp-panel figcaption { font-size: 7px; }
   .sheet { left: 8px; right: 8px; bottom: 8px; max-height: 62vh; }
   .footer-replay { display: none; }
+}
+
+/* ------------------------------------------------------------ round two */
+/* A few faint stars behind everything (src/starfield.ts). */
+#starfield { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+
+/* The Controls and Tools handles are placed with a transform; pressing one must not move it away from the pointer. */
+.dock-handle.right:active:not(:disabled) { transform: translateY(-50%); }
+.dock-handle.left:active:not(:disabled) { transform: translateY(-50%) rotate(180deg); }
+
+/* Facts: the "Did you know?" card on the Sky page, and the line about a picked place or an open cube. */
+.fact-card { display: grid; gap: 0.45rem; padding: 0.7rem 0.8rem; border: 1px solid var(--line-1); border-radius: 6px; background: rgba(61, 91, 214, 0.07); }
+.fact-card h3 { margin: 0; }
+.fact-card p, .fact { font-size: 0.86rem; line-height: 1.5; color: var(--ink); }
+.fact-card button { justify-self: start; }
+.fact { border-left: 2px solid var(--title); padding-left: 0.6rem; }
+.fact:empty { display: none; }
+
+/* About: makers, credits and sources, feedback. */
+.about { position: fixed; inset: 0; z-index: 900; overflow-y: auto; background: rgba(0, 0, 0, 0.94); padding: 18px clamp(16px, 5vw, 64px) 40px; }
+.about-top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; max-width: 980px; margin: 0 auto 1rem; }
+.about-top h2 { font: 14px/1.5 var(--pixel); letter-spacing: 0; text-transform: uppercase; color: var(--title); text-shadow: 2px 2px 0 var(--title-shadow); }
+.about-body { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.2rem; }
+.about-body section { display: grid; gap: 0.6rem; align-content: start; padding: 1rem 1.1rem; border: 1px solid var(--line-1); border-radius: 8px; background: rgba(3, 5, 12, 0.92); }
+.about-body h3 { font: 9px/1.6 var(--pixel); text-transform: uppercase; color: var(--glow); }
+.about-body section > p:not(.hint) { font-size: 0.94rem; line-height: 1.55; color: var(--ink); }
+.creator-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.creator { display: grid; gap: 0.25rem; align-content: start; padding: 0.6rem 0.7rem; border: 1px solid var(--line-1); border-radius: 6px; }
+.creator b { font: 9px/1.5 var(--pixel); text-transform: uppercase; color: var(--title); }
+.creator span, .creator p { font-size: 0.8rem; color: var(--ink-2); }
+.credits { display: grid; grid-template-columns: auto 1fr; gap: 0.45rem 0.9rem; margin: 0; font-size: 0.84rem; line-height: 1.45; }
+.credits dt { color: var(--ink-3); }
+.credits dd { margin: 0; color: var(--ink); }
+textarea {
+  font: inherit; font-size: 0.9rem; color: var(--ink); background: #000; border: 1px solid var(--line-2); border-radius: 4px;
+  padding: 0.55rem 0.65rem; resize: vertical; width: 100%;
+}
+textarea:focus-visible { outline: 2px solid var(--lumen); outline-offset: 2px; }
+body.kiosk .feedback { display: none; }
+@media (max-width: 760px) { .about-body { grid-template-columns: 1fr; } }
+
+/* The message a found secret shows (src/eggs.ts). */
+.toast {
+  position: fixed; left: 50%; bottom: 140px; transform: translateX(-50%); z-index: 950; max-width: min(460px, calc(100vw - 32px));
+  padding: 12px 16px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 4px 4px 0 var(--wall);
+  font: 9px/1.7 var(--pixel); text-align: center;
 }

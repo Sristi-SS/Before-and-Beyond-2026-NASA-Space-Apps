@@ -122,7 +122,7 @@ export function drawSpectrum(canvas: HTMLCanvasElement, points: PhotFrame[], opt
     }
     // One label per molecule, on its own row, at its first band (approximate).
     const first = m.bands[m.bands.length - 1];
-    ctx.font = "10.5px 'Segoe UI', system-ui, sans-serif";
+    ctx.font = "10.5px 'Nunito Variable', system-ui, sans-serif";
     ctx.fillStyle = "#cfe8fb";
     ctx.textBaseline = "top";
     const label = `${m.label.split(" ")[0]} (approx.)`;

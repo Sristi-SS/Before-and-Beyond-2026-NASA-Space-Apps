@@ -149,6 +149,7 @@ export function initHelp(): void {
   const apply = (on: boolean): void => {
     document.body.classList.toggle("no-help", !on);
     toggle?.setAttribute("aria-pressed", String(on));
+    if (toggle) toggle.textContent = on ? "Tips: on" : "Tips: off";
     if (!on) hide();
   };
   // Tips start hidden (the intro does the first teaching); the ? button shows them and says how they work.
@@ -162,7 +163,7 @@ export function initHelp(): void {
           anchor: toggle, side: "below", ms: 9000, title: "Tips on!",
           text: "If you're confused about what something means, press the question marks that now appear next to it.",
         }
-      : { anchor: toggle, side: "below", ms: 5000, title: "Tips off", text: "Press ? again any time to bring the question marks back." });
+      : { anchor: toggle, side: "below", ms: 5000, title: "Tips off", text: "Press Tips again any time to bring the question marks back." });
   });
 
   attach();

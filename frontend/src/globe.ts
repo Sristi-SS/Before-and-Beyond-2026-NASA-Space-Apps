@@ -82,7 +82,7 @@ export interface TextSpriteOptions {
 }
 
 const SPRITE_FONTS = {
-  sans: `"Bricolage Grotesque Variable", "Segoe UI", system-ui, sans-serif`,
+  sans: `"Nunito Variable", "Segoe UI", system-ui, sans-serif`,
   mono: `"JetBrains Mono Variable", ui-monospace, monospace`,
   pixel: `"Press Start 2P", ui-monospace, monospace`,
 };
@@ -258,6 +258,10 @@ void main() {
   if (t.a < 0.5) discard;
   gl_FragColor = vec4(t.rgb, vA);
 }`;
+
+/** Where a star's name may sit, as sprite anchors: under the star, above it, to its right, to its left. */
+const LABEL_SPOTS: Array<[number, number]> = [[0.5, 1.55], [0.5, -0.55], [-0.12, 0.5], [1.12, 0.5]];
+const LABEL_SPOT = new WeakMap<THREE.Sprite, number>();
 
 export class Globe {
   static supported(): boolean {
@@ -490,7 +494,7 @@ export class Globe {
     this.starGroup.add(new THREE.Points(geo, this.starMat));
     this.starLabels = [];
     for (const s of [...data.stars].sort((a, b) => a.mag - b.mag)) {
-      if (!s.name || s.mag > 1.7) continue;
+      if (!s.name || s.mag > 2.1) continue;
       const label = textSprite(s.name, { height: 0.024, color: "#e6eaf7", font: "sans" });
       // Centred under the star, with a small gap below the star picture.
       label.center.set(0.5, 1.55);
@@ -692,9 +696,20 @@ export class Globe {
     for (const s of this.starLabels) {
       let show = s.dir.dot(camDir) > -0.02; // same far-side cut-off as the pins
       if (show) {
-        const box = this.labelBox(s.sprite, s.dir, w, h);
-        show = !hits(box);
-        if (show) taken.push(box);
+        // Under the star if there is room; otherwise above it, then right, then left.  The place used
+        // last time is tried first, so a name does not hop about while the globe turns.
+        show = false;
+        const first = LABEL_SPOT.get(s.sprite) ?? 0;
+        for (let k = 0; k < LABEL_SPOTS.length && !show; k++) {
+          const spot = (first + k) % LABEL_SPOTS.length;
+          s.sprite.center.set(LABEL_SPOTS[spot][0], LABEL_SPOTS[spot][1]);
+          const box = this.labelBox(s.sprite, s.dir, w, h);
+          if (!hits(box)) {
+            taken.push(box);
+            LABEL_SPOT.set(s.sprite, spot);
+            show = true;
+          }
+        }
       }
       s.sprite.visible = show;
     }

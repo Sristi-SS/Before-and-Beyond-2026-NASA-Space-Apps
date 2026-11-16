@@ -195,6 +195,7 @@ export class CompareView {
   private npix = 128;
   private ia = 0;
   private ib = 0;
+  private spots: Change["spots"] = [];
 
   private readonly selA = el("select");
   private readonly selB = el("select");
@@ -283,6 +284,42 @@ export class CompareView {
     return "";
   }
 
+  /** What the line above the pictures says. */
+  get summary(): string {
+    return this.note.textContent ?? "";
+  }
+
+  /** The pictures side by side on one canvas, rings included, for saving. */
+  snapshot(): HTMLCanvasElement | null {
+    if (!this.frames[this.ia] || !this.frames[this.ib]) return null;
+    const n = this.npix;
+    const k = 3;
+    const gap = 4;
+    const panels = this.changed.canvas.hidden
+      ? [this.before.canvas, this.after.canvas]
+      : [this.before.canvas, this.after.canvas, this.changed.canvas];
+    const out = document.createElement("canvas");
+    out.width = (panels.length * n + (panels.length - 1) * gap) * k;
+    out.height = n * k;
+    const g = out.getContext("2d");
+    if (!g) return null;
+    g.imageSmoothingEnabled = false;
+    g.fillStyle = "#000";
+    g.fillRect(0, 0, out.width, out.height);
+    g.strokeStyle = "#fff";
+    g.lineWidth = 2;
+    panels.forEach((canvas, i) => {
+      const x0 = i * (n + gap) * k;
+      g.drawImage(canvas, x0, 0, n * k, n * k);
+      for (const s of this.spots) {
+        g.beginPath();
+        g.arc(x0 + (s.x + 0.5) * k, (n - s.y - 0.5) * k, 5 * k, 0, Math.PI * 2);
+        g.stroke();
+      }
+    });
+    return out;
+  }
+
   /** Redraw (call when the view is shown or the pictures changed). */
   render(): void {
     const A = this.frames[this.ia];
@@ -306,6 +343,7 @@ export class CompareView {
 
     const problem = this.ia === this.ib ? "Both dates are the same picture. Pick two different dates." : this.unlike(A.meta, B.meta);
     const change = problem ? null : computeChange(A.data, B.data, n);
+    this.spots = change ? change.spots : [];
     this.changed.canvas.hidden = !change;
     this.changed.message.hidden = !!change;
     if (!change) {

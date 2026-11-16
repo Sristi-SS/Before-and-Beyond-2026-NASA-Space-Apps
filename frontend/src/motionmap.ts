@@ -144,7 +144,7 @@ export class MotionMapView {
     ctx.strokeRect(b.x0 + 0.5, b.y0 + 0.5, b.w, b.h);
 
     ctx.fillStyle = TEXT;
-    ctx.font = "20px 'Segoe UI', system-ui, sans-serif";
+    ctx.font = "20px 'Nunito Variable', system-ui, sans-serif";
     const tick = niceTick(r.span);
     const first = -Math.floor(r.span / tick) * tick;
     ctx.textAlign = "center";

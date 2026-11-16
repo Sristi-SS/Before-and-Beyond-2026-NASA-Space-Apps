@@ -236,7 +236,7 @@ export class CandidatePanel {
       g.arc(x, y, rad, 0, Math.PI * 2);
       g.stroke();
       g.setLineDash([]);
-      g.font = "600 11px 'Bricolage Grotesque Variable', system-ui, sans-serif";
+      g.font = "600 11px 'Nunito Variable', system-ui, sans-serif";
       const label = `candidate ${c.rank}: predicted here`;
       const tw = g.measureText(label).width;
       const lx = Math.max(4, Math.min(r.width - tw - 10, x - tw / 2));

@@ -3,6 +3,7 @@
 // This module owns page switching, the URL parameter scene=globe|cube, and the globe's side panel.
 // ("Why it moves" used to be a third page; it is now the second card of the intro, see whymoves.ts.)
 import * as api from "./api";
+import { factFor } from "./facts";
 import { formatRaDec, Globe, separationDeg, type Pin } from "./globe";
 import { flushState, readState, writeState, type Scene } from "./state";
 
@@ -106,6 +107,9 @@ function openCube(p: api.CachedPatch): void {
   else go();
 }
 
+/** Named bright stars drawn on the globe, for the fact shown when a place near one is picked. */
+let brightList: api.BrightStar[] = [];
+
 /** Fill the build form with a position (and a named target when it is one) and start building. */
 function buildCubeAt(ra: number, dec: number, targetKey?: string): void {
   const select = $("target-select") as HTMLSelectElement;
@@ -142,6 +146,18 @@ function showPick(ra: number, dec: number, targetKey?: string, targetName?: stri
   head.className = "pick-head";
   head.textContent = `${targetName ? `${targetName}: ` : ""}${formatRaDec(ra, dec)}`;
   box.append(head);
+  // A short fact about the place: the test object itself, or the brightest named star within two degrees.
+  const star = targetName ? undefined : brightList
+    .filter((b) => b.name && separationDeg(ra, dec, b.ra_deg, b.dec_deg) < 2)
+    .sort((a, b) => a.mag - b.mag)[0];
+  if (star) head.textContent = `Near ${star.name}: ${formatRaDec(ra, dec)}`;
+  const fact = factFor(targetName || star?.name);
+  if (fact) {
+    const line = document.createElement("p");
+    line.className = "fact";
+    line.textContent = fact;
+    box.append(line);
+  }
   const near = targetName ? patchesOfTarget(targetName) : patchesNear(ra, dec);
   const line = document.createElement("p");
   line.className = "hint";
@@ -239,6 +255,7 @@ async function ensureGlobe(): Promise<void> {
 
   const [tg, ps, st] = await Promise.allSettled([api.targets(), api.cachedPatches(), api.brightStars()]);
   targetList = tg.status === "fulfilled" ? tg.value.targets : [];
+  brightList = st.status === "fulfilled" ? st.value.stars : [];
   // Several cubes of one place can be in the cache (test builds).  Show the richest one only.
   const best = new Map<string, api.CachedPatch>();
   for (const p of ps.status === "fulfilled" ? ps.value.jobs : []) {

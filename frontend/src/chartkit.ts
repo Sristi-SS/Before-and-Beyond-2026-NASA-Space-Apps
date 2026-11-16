@@ -89,7 +89,7 @@ export function drawFrame(
   yLabel: string,
 ): void {
   const { ctx } = plot;
-  ctx.font = "11px 'Segoe UI', system-ui, sans-serif";
+  ctx.font = "11px 'Nunito Variable', system-ui, sans-serif";
   ctx.lineWidth = 1;
   ctx.strokeStyle = GRID;
   ctx.fillStyle = MUTED;
@@ -219,7 +219,7 @@ export function drawEmpty(canvas: HTMLCanvasElement, message: string): void {
   const plot = preparePlot(canvas);
   if (!plot) return;
   plot.ctx.fillStyle = MUTED;
-  plot.ctx.font = "12px 'Segoe UI', system-ui, sans-serif";
+  plot.ctx.font = "12px 'Nunito Variable', system-ui, sans-serif";
   plot.ctx.textAlign = "center";
   plot.ctx.textBaseline = "middle";
   plot.ctx.fillText(message, plot.w / 2, plot.h / 2);

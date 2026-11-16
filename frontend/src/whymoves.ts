@@ -15,7 +15,7 @@ function draw(ctx: CanvasRenderingContext2D, w: number, h: number, t: number): v
   ctx.clearRect(0, 0, w, h);
   ctx.fillStyle = "#05060c";
   ctx.fillRect(0, 0, w, h);
-  ctx.font = "15px 'Bricolage Grotesque Variable', system-ui, sans-serif";
+  ctx.font = "15px 'Nunito Variable', system-ui, sans-serif";
   ctx.textBaseline = "middle";
   const angle = t * 2 * Math.PI;
 
