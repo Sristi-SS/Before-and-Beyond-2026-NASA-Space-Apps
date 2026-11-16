@@ -11,7 +11,7 @@ export interface Creator {
 export const TEAM_NAME = "Before and Beyond";
 
 export const CREATORS: Creator[] = [
-  { name: "Arush", role: "", about: "" },
+  { name: "Arush", role: "", about: "", link: "https://github.com/Arusshh" },
   { name: "Aditya", role: "", about: "", link: "https://github.com/AdityaGaur77" },
   { name: "Sristi", role: "", about: "", link: "https://github.com/Sristi-SS" },
   { name: "Nishadh", role: "", about: "", link: "https://github.com/nishadhmulay" },

@@ -3,7 +3,7 @@
 // it sits behind the pictures, and it holds still when the visitor asks for reduced motion.
 // Three depths: far stars are small, dim and barely move with the pointer; near ones are larger,
 // brighter and move a little more.  Once in a long while a shooting star crosses the sky.
-interface Star { x: number; y: number; depth: number; base: number; speed: number; phase: number; warm: boolean }
+interface Star { x: number; y: number; depth: number; base: number; speed: number; phase: number; warm: boolean; big: boolean }
 interface Meteor { x: number; y: number; vx: number; vy: number; age: number; life: number }
 
 let width = 0;
@@ -56,6 +56,14 @@ export function initStarfield(): void {
       const y = Math.round(s.y - py * shift);
       ctx.globalAlpha = s.base * twinkle;
       ctx.fillStyle = party > 0 ? `hsl(${Math.round(s.phase * 57 + t * 90) % 360} 90% 70%)` : s.warm ? "#ffd9a8" : "#dfe8ff";
+      if (s.big) {                     // a handful of larger stars: a 3-pixel core, long thin arms, a faint halo
+        ctx.fillRect(x - 1, y - 1, 3, 3);
+        ctx.fillRect(x - 5, y, 11, 1);
+        ctx.fillRect(x, y - 5, 1, 11);
+        ctx.globalAlpha *= 0.2;
+        ctx.fillRect(x - 3, y - 3, 7, 7);
+        continue;
+      }
       const size = s.depth > 0.6 ? 2 : 1;
       ctx.fillRect(x, y, size, size);
       if (s.depth > 0.88) {            // the nearest few get a small cross
@@ -91,13 +99,16 @@ export function initStarfield(): void {
     canvas.width = Math.round(width * dpr);
     canvas.height = Math.round(height * dpr);
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    // Scarce on purpose: about one star per 150 x 150 pixels.
-    const count = Math.max(36, Math.min(90, Math.round((width * height) / 22000)));
-    stars = Array.from({ length: count }, () => {
-      const depth = Math.random();
+    // Scarce on purpose: about one star per 120 x 120 pixels, and one in twelve of them larger.
+    const count = Math.max(40, Math.min(130, Math.round((width * height) / 15000)));
+    const larger = Math.max(3, Math.round(count * 0.08));
+    stars = Array.from({ length: count }, (_, i) => {
+      const big = i < larger;
+      const depth = big ? 1 : Math.random();
       return {
-        x: Math.random() * width, y: Math.random() * height, depth, base: 0.22 + depth * 0.5,
-        speed: 0.4 + Math.random() * 1.1, phase: Math.random() * 6.283, warm: Math.random() < 0.15,
+        x: Math.random() * width, y: Math.random() * height, depth, big,
+        base: big ? 0.7 + Math.random() * 0.2 : 0.22 + depth * 0.5,
+        speed: (big ? 0.3 : 0.4) + Math.random() * (big ? 0.5 : 1.1), phase: Math.random() * 6.283, warm: Math.random() < 0.15,
       };
     });
     draw(performance.now() / 1000, 0);
