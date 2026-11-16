@@ -31,6 +31,30 @@ SPHEREx Time Cube is a public, browser-based tool for exploring how infrared obs
 ---
 ## Features
 
+### 1. Interactive Sky Exploration
+- Explore the sky using an interactive celestial globe.
+- Search for astronomical objects by name or exact sky coordinates (Right Ascension and Declination).
+- Navigate between selected sky regions and mission test targets.
+- Visualize celestial coordinate grids, the ecliptic and galactic equator.
+- Select a region of interest to generate a corresponding Time Cube.
+
+### 2. 3D Time Cube Visualization
+- Stack astronomical observations along a vertical time axis to visualize changes over time.
+- Explore observations chronologically using an interactive timeline.
+- Play, pause and adjust the speed of time-lapse visualizations.
+- Switch between Cube, Blink, Colour and Compare viewing modes.
+- Explore different SPHEREx detector groups (D1–D6).
+- Compare infrared observations across different epochs.
+- Visualize the apparent movement of astronomical objects across observations.
+
+### 3. Motion Detection and Alignment
+- Search across hundreds of possible motion directions and speeds.
+- Generate motion maps to identify potential moving objects.
+- Apply trial motion corrections to align observations of moving sources.
+- Combine aligned observations to distinguish moving objects from stationary background sources.
+- Compare aligned and non-aligned images.
+- Use catalogue-based motion information as a reference.
+- Inspect and save motion maps, images, video clips and candidate reports.
 
 ---
 ## Technology Stack
@@ -180,20 +204,27 @@ python -m pytest backend\tests -q -k real_frames          :: 4 to 12 min, needs 
 ---
 ## Data Sources
 
-NASA/IPAC IRSA SPHEREx Mission Data Archive <https://irsa.ipac.caltech.edu/Missions/spherex.html>
-IRSA Table Access Protocol (TAP) Service (spherex.obscore) <https://irsa.ipac.caltech.edu/TAP/>
-IRSA Image Cutout Service (IBE) <https://irsa.ipac.caltech.edu/ibe/>
-IRSA SPHEREx DataLink Service <https://irsa.ipac.caltech.edu/datalink/links/spherex>
-NASA JPL SPHEREx Mission Overview <https://www.jpl.nasa.gov/missions/spherex/>
-SPHEREx Explanatory Supplement (IRSA Documentation) <https://irsa.ipac.caltech.edu/data/SPHEREx/docs/>
-NASA WISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/wise.html>
-NASA NEOWISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/neowise.html>
-unWISE Time-Resolved Coadds (Release neo11, 2010–2024) <https://portal.nersc.gov/project/cosmo/temp/ameisner/neo11/>
-unTimely Catalog & unWISE Data Products (IRSA DOI) <https://doi.org/10.26131/IRSA580>
+- NASA/IPAC IRSA SPHEREx Mission Data Archive <https://irsa.ipac.caltech.edu/Missions/spherex.html>
+- IRSA Table Access Protocol (TAP) Service (spherex.obscore) <https://irsa.ipac.caltech.edu/TAP/>
+- IRSA Image Cutout Service (IBE) <https://irsa.ipac.caltech.edu/ibe/>
+- IRSA SPHEREx DataLink Service <https://irsa.ipac.caltech.edu/datalink/links/spherex>
+- NASA JPL SPHEREx Mission Overview <https://www.jpl.nasa.gov/missions/spherex/>
+- SPHEREx Explanatory Supplement (IRSA Documentation) <https://irsa.ipac.caltech.edu/data/SPHEREx/docs/>
+- NASA WISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/wise.html>
+- NASA NEOWISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/neowise.html>
+- unWISE Time-Resolved Coadds (Release neo11, 2010–2024) <https://portal.nersc.gov/project/cosmo/temp/ameisner/neo11/>
+- unTimely Catalog & unWISE Data Products (IRSA DOI) <https://doi.org/10.26131/IRSA580>
 
 ## Future Possibilities
 
-
+We plan to make the Time Cube a general scientific investigation environment. To do this we will create an environment where a user can explore by finding and visualizing astronomical regions, investigate by comparing time, motion, brightness and spectra, and understand by exploring relationships, uncertainty and potential candidates. 
+Our next steps will include: 
+- Letting users explore more coordinates and access more historical observations
+- Building a region catalogue and caching commonly explored regions
+- Introducing a spatial and temporal relationship map
+- Eventually comparing a GNN's results against the existing motion-detection baseline
+- Displaying uncertainty, source associations, known-object matches and artifact warnings
+- Move beyond the simplified detector-group selection towards all 102 spectral channels, with actual spectral plots.
 
 ## AI Usage 
 
@@ -217,4 +248,7 @@ See `REFERENCES.md` for the services, papers, and software used.
 
 ## License
 
+This project is licensed under the MIT License. You are free to use, copy, modify, merge, publish, distribute, sublicense and/or sell copies of the software, provided that the original copyright notice and permission notice are included in all copies or substantial portions of the software.
+
+See the LICENSE file for the complete license text.
 
