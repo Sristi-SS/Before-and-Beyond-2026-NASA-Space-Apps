@@ -9,9 +9,9 @@ SPHEREx Time Cube is a public, no-login tool for viewing aligned SPHEREx images 
 
 <div align="center">
 
-[Launch the live app](https://spherex-time-cube.onrender.com/) · 
+[Launch the live app](https://spherex-time-cube-8pnr.onrender.com/?scene=globe&job=9032b93d074019135315&ra=133.8189&dec=-7.2470&fov=0.20&axis=time&group=3&t=0&vx=0&vy=0&view=colour&gaia=1&static=median&px=109&py=29&panel=spectrum&a=0&b=11) · 
 [Watch the demo](REPLACE_WITH_PUBLIC_DEMO_LINK) · 
-[View the source code](https://github.com/AdityaGaur77/Before-and-Beyond-2026-NASA-Space-Apps)
+[View the source code](https://github.com/Sristi-SS/Before-and-Beyond-2026-NASA-Space-Apps)
 </div>
 
 ## About the challenge
@@ -178,9 +178,23 @@ python -m pytest backend\tests -q -k real_frames          :: 4 to 12 min, needs 
 ```
 
 ---
+## Data Sources
+
+NASA/IPAC IRSA SPHEREx Mission Data Archive <https://irsa.ipac.caltech.edu/Missions/spherex.html>
+IRSA Table Access Protocol (TAP) Service (spherex.obscore) <https://irsa.ipac.caltech.edu/TAP/>
+IRSA Image Cutout Service (IBE) <https://irsa.ipac.caltech.edu/ibe/>
+IRSA SPHEREx DataLink Service <https://irsa.ipac.caltech.edu/datalink/links/spherex>
+NASA JPL SPHEREx Mission Overview <https://www.jpl.nasa.gov/missions/spherex/>
+SPHEREx Explanatory Supplement (IRSA Documentation) <https://irsa.ipac.caltech.edu/data/SPHEREx/docs/>
+NASA WISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/wise.html>
+NASA NEOWISE Mission Archive at IRSA <https://irsa.ipac.caltech.edu/Missions/neowise.html>
+unWISE Time-Resolved Coadds (Release neo11, 2010–2024) <https://portal.nersc.gov/project/cosmo/temp/ameisner/neo11/>
+unTimely Catalog & unWISE Data Products (IRSA DOI) <https://doi.org/10.26131/IRSA580>
+
 ## Future Possibilities
 
----
+
+
 ## AI Usage 
 
 This project was built with AI assistance. Every generated source file starts
