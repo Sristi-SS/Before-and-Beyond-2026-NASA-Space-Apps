@@ -1,23 +1,37 @@
-# SPHEREx Time Cube
+## NASA Space Apps - Before & Beyond
+#### Arush, Aditya Gaur, Nishad Mulay, Sristi Sharma
+
+<img width="1097" height="130" alt="image" src="https://github.com/user-attachments/assets/59c82bba-3a2f-4d38-a5c2-c012f82b0c2b" />
 
 **Explore how a patch of infrared sky changes over time and test whether a source follows a chosen motion.**
 
 SPHEREx Time Cube is a public, no-login tool for viewing aligned SPHEREx images of one sky region as a timeline and interactive 3D cube. Use shift-and-stack to test a trial motion. Separately labeled WISE observations extend the timeline for selected examples.
 
-[Launch the live app](https://spherex-time-cube.onrender.com/) ·
-[Watch the demo](REPLACE_WITH_PUBLIC_DEMO_LINK) ·
+<div align="center">
+
+[Launch the live app](https://spherex-time-cube.onrender.com/) · 
+[Watch the demo](REPLACE_WITH_PUBLIC_DEMO_LINK) · 
 [View the source code](https://github.com/AdityaGaur77/Before-and-Beyond-2026-NASA-Space-Apps)
+</div>
 
 ## About the challenge
 
-The NASA Space Apps **Planet X and SPHEREx** challenge asks for a public tool that makes it easier to explore how SPHEREx sky images change over time. SPHEREx observes the sky in 102 near-infrared bands, and observations from different times can reveal sources that move or vary. Because wavelength varies with position in a SPHEREx image, comparisons also need to keep the image position and wavelength information straight. [Challenge description](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [IRSA SPHEREx overview](https://irsa.ipac.caltech.edu/onlinehelp/spherex/spherex/overview.html)
+NASA Space Apps **Planet X and SPHEREx** challenge asks for a public tool that makes it easier to explore how SPHEREx sky images change over time. SPHEREx observes the sky in 102 near-infrared bands, and observations from different times can reveal sources that move or vary. Because wavelength varies with position in a SPHEREx image, comparisons also need to keep the image position and wavelength information straight. 
+<div align="center">
 
-**Scope:** The app analyzes selected sky patches; it does not display the full sky or all 102 bands for every target. WISE observations are supplementary and labeled separately. Results are candidates for follow-up, not confirmed discoveries.
+[Challenge description](https://www.spaceappschallenge.org/2026/challenges/planet-x-and-spherex/) · [IRSA SPHEREx overview](https://irsa.ipac.caltech.edu/onlinehelp/spherex/spherex/overview.html)
 
+</div>
+
+---
 ## Overview
+
+SPHEREx Time Cube is a public, browser-based tool for exploring how infrared observations of the same region of sky change over time. It brings archival SPHEREx images together in an interactive timeline and 3D time cube, making it easier to compare observations and inspect changes across epochs. Users can browse aligned images, compare frames, and shift-and-stack observations under a trial motion to examine possible moving sources. Optional Gaia overlays and separately labeled WISE observations provide additional context. 
 
 ---
 ## Features
+
+
 
 ---
 ## Technology Stack
