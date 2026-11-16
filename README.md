@@ -10,7 +10,7 @@ SPHEREx Time Cube is a public, no-login tool for viewing aligned SPHEREx images 
 <div align="center">
 
 [Launch the live app](https://spherex-time-cube-8pnr.onrender.com/?scene=globe&job=9032b93d074019135315&ra=133.8189&dec=-7.2470&fov=0.20&axis=time&group=3&t=0&vx=0&vy=0&view=colour&gaia=1&static=median&px=109&py=29&panel=spectrum&a=0&b=11) · 
-[Watch the demo](REPLACE_WITH_PUBLIC_DEMO_LINK) · 
+[slide presentation](https://docs.google.com/presentation/d/1sTyKUtlXaWguuj9l_4TcrO9qZNbZ5TKvEme2cdsX4D8/edit?usp=sharing) · 
 [View the source code](https://github.com/Sristi-SS/Before-and-Beyond-2026-NASA-Space-Apps)
 </div>
 
