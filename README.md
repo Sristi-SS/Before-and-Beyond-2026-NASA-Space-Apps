@@ -36,8 +36,47 @@ SPHEREx Time Cube is a public, browser-based tool for exploring how infrared obs
 ---
 ## Technology Stack
 
+| Layer | Technology | Role |
+|---|---|---|
+| Frontend | TypeScript, Node.js 22, Vite 6, Three.js | Builds the browser interface and renders the sky globe, time cube, and orbit scene. |
+| Browser graphics | HTML, CSS, Canvas 2D, WebGL | Provides controls, 2D plots, and image rendering. |
+| Backend API | Python 3.14, FastAPI, Uvicorn, Pydantic | Serves the API and built frontend, validates requests, and manages cube jobs. |
+| Astronomy processing | Astropy, PyVO, `reproject`, NumPy, SciPy | Reads FITS/WCS metadata, searches archives, aligns images, and runs image and motion analysis. |
+| Contact sheets | Matplotlib Agg | Renders labeled frame summaries without a desktop display. |
+| Data services | IRSA TAP/ADQL, IBE/DataLink, CDS Sesame/SIMBAD, Gaia DR3, VizieR, WISE W1/W2 | Finds observations, resolves names, and adds separately identified catalog or survey context. |
+| Cache | On-disk FITS, NumPy arrays, and JSON job state | Reuses downloaded products and completed cube builds. |
+| Packaging | Docker and a Render blueprint | Describes the deployment target; the deployment notes mark it as untested. |
+
+
 ---
 ## System Architecture 
+
+```mermaid
+flowchart LR
+    VISITOR[Visitor] --> BROWSER[TypeScript browser app<br/>Three.js globe, cube, and orbit scenes]
+    BROWSER <-->|JSON and image requests| API[FastAPI application]
+    API --> JOBS[Threaded cube job manager<br/>bounded concurrency]
+    JOBS --> RESOLVE[Target resolver<br/>built-in targets or CDS Sesame]
+    RESOLVE --> CDS[CDS Sesame / SIMBAD]
+    JOBS --> TAP[IRSA TAP / ADQL<br/>SPHEREx observation search]
+    TAP --> IBE[IRSA IBE cutouts<br/>DataLink fallback]
+    IBE --> RAW[Raw FITS cache]
+    RAW --> PIPE[Astropy and reproject pipeline<br/>WCS alignment, background, and flags]
+    PIPE --> GROUP[Group by detector and observing pass]
+    GROUP --> STORE[Processed arrays and job.json cache]
+    WISE[WISE W1 / W2 observations] --> STORE
+    GAIA[Gaia DR3 and VizieR context] --> API
+    STORE --> PRODUCTS[Frames, cubes, spectra,<br/>photometry, and motion results]
+    PRODUCTS --> API
+    API --> BROWSER
+```
+
+1. The browser sends a target name or coordinates and cube settings to the API.
+2. The backend resolves the target, searches IRSA for SPHEREx detector planes, and retrieves FITS cutouts with their WCS and quality layers. Raw products are cached on disk.
+3. The processing pipeline aligns valid pixels to a common sky grid, subtracts zodiacal light and a robust median background, applies the documented flag mask, and groups frames by detector and observing pass.
+4. Job metadata and processed arrays are persisted in the cache. WISE observations remain separately identified; Gaia and VizieR results provide catalog context.
+5. The API serves the frames and analysis products to the browser, where the globe, 3D cube, comparisons, spectrum panels, and motion views are rendered.
+
 
 ---
 ## Data sources and Scientific Processing
