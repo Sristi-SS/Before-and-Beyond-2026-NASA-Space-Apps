@@ -124,6 +124,20 @@ flowchart LR
 *Orientation: the grid is north-up with a negative RA step, so east is −x and
 north is +y. A positive `vx` therefore moves a source toward smaller x.
 
+### Detector wavelength groups
+
+| Group | Nominal range (µm) | Typical λ in the cube |
+| --- | --- | --- |
+| D1 | 0.75–1.12 | 0.75–0.90 |
+| D2 | 1.10–1.65 | 1.20–1.60 |
+| D3 | 1.63–2.43 | 1.65–2.36 |
+| D4 | 2.40–3.85 | 2.50–3.80 |
+| D5 | 3.81–4.43 | 3.85–4.40 |
+| D6 | 4.41–5.01 | 4.45–4.95 |
+
+The exact wavelength of each frame is read from the `W` (`WAVE-TAB`) WCS, so it
+varies within a detector and is displayed per slice.
+
 ---
 ## Installation (Windows, Python 3.14, Node 22)
 
@@ -165,22 +179,6 @@ python -m pytest backend\tests -q -k real_frames          :: 4 to 12 min, needs 
 ```
 
 ---
-### Detector wavelength groups
-
-| Group | Nominal range (µm) | Typical λ in the cube |
-| --- | --- | --- |
-| D1 | 0.75–1.12 | 0.75–0.90 |
-| D2 | 1.10–1.65 | 1.20–1.60 |
-| D3 | 1.63–2.43 | 1.65–2.36 |
-| D4 | 2.40–3.85 | 2.50–3.80 |
-| D5 | 3.81–4.43 | 3.85–4.40 |
-| D6 | 4.41–5.01 | 4.45–4.95 |
-
-The exact wavelength of each frame is read from the `W` (`WAVE-TAB`) WCS, so it
-varies within a detector and is displayed per slice.
-
----
-
 ## API
 
 | Route | Purpose |
@@ -364,7 +362,7 @@ the test suite and is labelled as such.
 
 ---
 
-## Motion map and colour view
+## Motion map and color view
 
 **Motion map** (`backend/tilt.py: motion_map`, view "Motion map", button "Find
 best motion"). For one detector group it scores every velocity on a grid
@@ -761,26 +759,7 @@ Added 2026-11-14.
   of FITS each; a 20-frame cube is ~80 MB before alignment.
 - **No authentication or paid services.** Everything runs locally.
 
-## Open questions
-
-- Should bright-star cores keep their measured (flagged) values instead of an
-  interpolated fill? This matters for the brightness charts of RW Aurigae and
-  R Draconis.
-- The tilt score is the peak of the stack. One bright fixed star can hold the
-  peak, so the score does not change with velocity (seen on Barnard's Star in
-  D1, D3, D4). The motion map (below) uses a different score that ignores fixed
-  stars; the tilt panel still reports the plain peak.
-- Does `spherex_dr1` or `spherex_qr3` give better photometry for the reddest
-  targets? The cubes mix both collections today (see "How a cube is made").
-- How should candidate motion be verified? A multi-band table, a
-  signal-to-noise threshold and a cross-match against SIMBAD are not built yet; the
-  evidence checklist and the Gaia overlay are the current aids.
-- WISE 0855: SPHEREx alone does not show it clearly, and a field star is
-  1–2 pixels from where it is now. The WISE baseline carries this demo.
-- Is a 0.2° cut-out the right trade-off? It keeps the cube small, but fast
-  movers such as Barnard's Star can leave the field between passes if the
-  centring epoch is wrong; the 2026.5 propagation is a compromise.
-
+---
 ## Unverified
 
 - The WebGL scenes were checked through the DOM, network calls, console (no errors)
@@ -795,38 +774,7 @@ Added 2026-11-14.
 - The five-target visibility table is a screening summary (a stack S/N at one
   predicted pixel), not a cross-validated catalogue result.
 
-## Repository layout
-
-```
-backend/
-  app.py        FastAPI routes + static frontend mount
-  resolve.py    Sesame lookup, J2000 epochs, proper-motion propagation
-  spherex.py    TAP search, DataLink/IBE cut-outs, WAVE-TAB wavelengths
-  align.py      common WCS grid, reprojection, background, FLAGS mask
-  group.py      pass clustering, detector groups, slice averaging
-  tilt.py       exact sub-pixel shift-and-stack, sharpness, motion-map grid
-  jobs.py       background pipeline, job state, contact sheets
-  wise.py       unWISE time-resolved W1/W2 epochs on the job grid
-  gaia.py       Gaia DR3 cone search, proper motion, pixel positions
-  extras.py     router: /api/jobs/{key}/gaia and /photometry, /api/jobs, /api/resolve, /api/sky/bright_stars
-  precache.py   five-target CLI, JSON summary
-  tests/        synthetic + real-frame tilt tests
-frontend/
-  src/cube.ts   three.js time cube (planes, labels, camera presets)
-  src/main.ts   form, playback, tilt fetch, result panels
-  src/wise.ts   WISE labels, 16-year movie frame selection, per-frame stretch
-  src/gaia.ts   Gaia ring overlay with hover/keyboard readout
-  src/checklist.ts  evidence checklist for a tilt peak
-  src/state.ts  URL state
-  src/scenes.ts, src/globe.ts, src/orbit.ts  sky globe, orbit view and scene switching
-  src/picker.ts click/keyboard pixel picker; src/spectrumpanel.ts panel
-  src/spectrum.ts, src/pulse.ts, src/photometry.ts, src/chartkit.ts  canvas charts (no chart library)
-  src/colormap.ts  blue/orange stretch, shared by cube and result
-data/
-  cache/        raw FITS, aligned .npy frames, cubes, jobs (git-ignored)
-  precache_summary.json
-```
-
+---
 ## AI assistance
 
 This project was built with AI assistance. Every generated source file starts
